@@ -1,0 +1,66 @@
+# ─── Skill registry cache ───
+.atl
+
+# ─── Terraform ───
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+tfplan
+.terraform.lock.hcl
+
+# ─── Kubernetes local config ───
+kubeconfig
+kubeconfig.*
+
+# ─── Python ───
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ─── Node.js ───
+node_modules/
+
+# ─── Java / Maven ───
+target/
+
+# ─── Go ───
+bin/
+
+# ─── Pulumi ───
+pulumi/
+
+# ─── Helm ───
+charts/*.tgz
+
+# ─── IDE ───
+.vscode/
+.idea/
+*.iml
+
+# ─── Environment files ───
+.env
+*.env
+.env.*
+!.env.example
+
+# ─── OS junk ───
+Thumbs.db
+Desktop.ini
+.DS_Store
+._*
+
+# ─── OpenCode local config ───
+.opencode/
+
+# ─── GitLab CI local cache ───
+/.cache
+
+# ─── Secrets (never commit) ───
+**/secret.yaml
+**/secrets.yaml
+# Placeholder credential manifests (e.g. services/*/k8s/base/admin-credentials.yaml —
+# real credentials come from external-secrets / Azure Key Vault).
+**/admin-credentials.yaml
