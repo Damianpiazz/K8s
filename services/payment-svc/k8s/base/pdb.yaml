@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-svc
+  labels:
+    app: payment-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: payment-svc

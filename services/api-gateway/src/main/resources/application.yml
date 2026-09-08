@@ -1,0 +1,143 @@
+# ── API Gateway ────────────────────────────────────────────────────────────
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  config:
+    # Optional config-server import: when config-service is up, api-gateway.yml
+    # (and profile blocks) load from it; when it is down the app still starts.
+    # Override CONFIG_SERVER_URL locally to point at a running config-server.
+    import: optional:configserver:${CONFIG_SERVER_URL:http://config-service:8888}
+
+  cloud:
+    gateway:
+      # Resolve lb://<service> URIs through Eureka discovery.
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            # In dev, the frontend runs on localhost; in prod it is served from
+            # the platform domain. Replace api.<domain> with your real domain.
+            allowedOriginPatterns:
+              - "http://localhost:*"
+              - "http://127.0.0.1:*"
+              - "https://api.<domain>"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      routes:
+        # ── Core services (Phase 5) ──────────────────────────────────────
+        # No StripPrefix: backend services keep their full /api/catalog/... paths.
+        - id: catalog-svc
+          uri: lb://catalog-svc
+          predicates:
+            - Path=/api/catalog/**
+        - id: cart-svc
+          uri: lb://cart-svc
+          predicates:
+            - Path=/api/cart/**
+
+        # ── Phase 6 services (order/payment/notification/checkout/bff) ──
+        - id: order-svc
+          uri: lb://order-svc
+          predicates:
+            - Path=/api/orders/**
+        - id: payment-svc
+          uri: lb://payment-svc
+          predicates:
+            - Path=/api/payments/**
+        - id: notification-svc
+          uri: lb://notification-svc
+          predicates:
+            - Path=/api/notifications/**
+        - id: checkout-svc
+          uri: lb://checkout-svc
+          predicates:
+            - Path=/api/checkout/**
+        - id: bff-web
+          uri: lb://bff-web
+          predicates:
+            - Path=/api/bff/**
+
+        # ── Phase 7 services (search/recommendation/inventory/shipping/returns/analytics) ──
+        - id: search-svc
+          uri: lb://search-svc
+          predicates:
+            - Path=/api/search/**
+        - id: recommendation-svc
+          uri: lb://recommendation-svc
+          predicates:
+            - Path=/api/recommendations/**
+        - id: inventory-svc
+          uri: lb://inventory-svc
+          predicates:
+            - Path=/api/inventory/**
+        - id: shipping-svc
+          uri: lb://shipping-svc
+          predicates:
+            - Path=/api/shipping/**
+        - id: returns-svc
+          uri: lb://returns-svc
+          predicates:
+            - Path=/api/returns/**
+        - id: analytics-svc
+          uri: lb://analytics-svc
+          predicates:
+            - Path=/api/analytics/**
+
+        # ── Placeholders for later phases ─────────────────────────────────
+        # Services arrive in later milestones with these exact registration
+        # names — the routes below will start working with zero gateway changes.
+        - id: customer-svc
+          uri: lb://customer-svc
+          predicates:
+            - Path=/api/customers/**
+
+        # ── Rate limiting (COMMENTED OUT — needs Redis) ──────────────────
+        # Uncomment the reactive-redis dependency in pom.xml, then add the
+        # filter below to any route (Redis must be reachable, see data/redis
+        # or Azure Cache for Redis via REDIS_HOST env):
+        #   - id: catalog-svc
+        #     uri: lb://catalog-svc
+        #     predicates:
+        #       - Path=/api/catalog/**
+        #     filters:
+        #       - name: RequestRateLimiter
+        #         args:
+        #           redis-rate-limiter.replenishRate: 10
+        #           redis-rate-limiter.burstCapacity: 20
+        #           redis-rate-limiter.requestedTokens: 1
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      # Overridden in k8s via EUREKA_SERVER_URL env.
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true

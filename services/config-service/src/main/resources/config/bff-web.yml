@@ -1,0 +1,38 @@
+# Served to the bff-web client on /bff-web/... and /bff-web/demo
+bff:
+  message: BFF (backend for storefront) configuration
+  catalog:
+    # Overridden in k8s via BFF_CATALOG_BASE_URL (catalog-svc ClusterIP DNS).
+    base-url: ${BFF_CATALOG_BASE_URL:http://catalog-svc:8081}
+  cart:
+    # Overridden in k8s via BFF_CART_BASE_URL (cart-svc ClusterIP DNS).
+    base-url: ${BFF_CART_BASE_URL:http://cart-svc:8082}
+  # WebClient connect/response timeout — failures degrade to partial payloads.
+  timeout-ms: 2000
+
+# Registers with discovery-service; overridden in k8s via EUREKA_SERVER_URL.
+spring:
+  application:
+    name: bff-web
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://discovery-service:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo

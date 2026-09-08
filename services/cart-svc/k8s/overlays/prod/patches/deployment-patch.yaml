@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart-svc
+spec:
+  # ⚠️ scaling out with the in-memory store fragments carts across pods.
+  # Switch to the Redis store (Azure Cache via REDIS_HOST) first.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: cart-svc
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

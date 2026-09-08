@@ -1,0 +1,13 @@
+# Test profile: no Eureka, no external config server.
+eureka:
+  client:
+    enabled: false
+
+bff:
+  catalog:
+    # Unreachable ports guarantee the degraded path in tests (fast
+    # connection-refused, no dependency on catalog/cart being up).
+    base-url: http://localhost:59991
+  cart:
+    base-url: http://localhost:59992
+  timeout-ms: 300

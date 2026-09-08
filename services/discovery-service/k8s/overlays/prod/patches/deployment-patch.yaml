@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-service
+spec:
+  # REAL production runs 3 replicas (Eureka quorum). In dev/staging 1 is fine.
+  # With this many replicas, enable register-with-eureka + fetch-registry and
+  # point defaultZone at ALL peer DNS names (peer1, peer2, peer3).
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: discovery-service
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

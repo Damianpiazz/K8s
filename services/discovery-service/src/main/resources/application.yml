@@ -1,0 +1,36 @@
+# ── Eureka Server ─────────────────────────────────────────────────────────
+server:
+  port: 8761
+
+spring:
+  application:
+    name: discovery-service
+
+eureka:
+  instance:
+    hostname: discovery-service
+    # Prefer the pod IP over the hostname so Eureka advertises the address
+    # other replica pods can actually reach.
+    prefer-ip-address: true
+  client:
+    # A standalone server does not register with itself nor fetch its own
+    # registry. In a 3-node HA setup these are enabled so peers replicate.
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      # Used by Eureka clients to find us; overridden by env in k8s.
+      defaultZone: http://localhost:8761/eureka/
+  server:
+    # Dev convenience: evict stale registrations aggressively so the dashboard
+    # stays truthful during classroom experiments.
+    eviction-interval-timer-in-ms: 30000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true

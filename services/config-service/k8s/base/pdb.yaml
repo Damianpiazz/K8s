@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: config-service
+  labels:
+    app: config-service
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # Only meaningful once replicas > 1 (prod overlay). minAvailable: 1 keeps
+  # node drains from taking the single dev replica down unnecessarily.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: config-service

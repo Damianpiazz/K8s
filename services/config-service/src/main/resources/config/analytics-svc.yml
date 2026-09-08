@@ -1,0 +1,5 @@
+# Served to the analytics-svc client
+analytics:
+  message: Analytics service configuration
+  default-top-limit: 5
+  max-events-buffer: 10000

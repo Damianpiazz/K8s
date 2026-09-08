@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-svc
+  labels:
+    app: search-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: search-svc
+  ports:
+    - name: http
+      port: 8091
+      targetPort: http

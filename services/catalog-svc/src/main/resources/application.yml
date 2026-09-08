@@ -1,0 +1,45 @@
+# ── Product catalog service ────────────────────────────────────────────────
+server:
+  port: 8081
+
+spring:
+  application:
+    name: catalog-svc
+
+  config:
+    # Optional config-server import: when config-service is up, catalog-svc.yml
+    # (and its `demo` profile block) load from it; when absent the app boots
+    # with the local defaults below. Set CONFIG_SERVER_URL in k8s.
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  datasource:
+    # Demo default: in-memory H2. Production override via k8s ConfigMap —
+    # point at Azure Postgres: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:h2:mem:catalogdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # fine for demo; use `validate` + migrations with Postgres
+    open-in-view: false
+    defer-datasource-initialization: true
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      # Overridden in k8s via EUREKA_SERVER_URL env.
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true

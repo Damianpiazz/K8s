@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+spec:
+  # 3 replicas in real production for HA + rolling updates without downtime.
+  # Config Server is stateless, so a full rolling restart is safe.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: config-service
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

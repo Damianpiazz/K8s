@@ -1,0 +1,10 @@
+# Test profile: no Eureka, no external config server.
+eureka:
+  client:
+    enabled: false
+
+checkout:
+  cart:
+    # Unreachable port guarantees the mock-cart fallback path in tests.
+    base-url: http://localhost:59999
+    timeout-ms: 300

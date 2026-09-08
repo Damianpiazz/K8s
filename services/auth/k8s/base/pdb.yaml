@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth
+  labels:
+    app: auth
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # With replicas > 1 the identity service survives node drains. Single
+  # replica anyway stays up during maintenance (minAvailable 1).
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: auth

@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base manifests for the discovery-service — environment-agnostic.
+namespace: ecommerce
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: ecommerce-platform
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - serviceaccount.yaml
+  - networkpolicy.yaml
+
+images:
+  - name: acr.azurecr.io/discovery-service
+    newName: acr.azurecr.io/discovery-service
+    newTag: latest

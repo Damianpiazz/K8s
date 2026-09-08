@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-svc-config
+  labels:
+    app: notification-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+data:
+  # ── Kafka / Event Hubs (consumer switch + bootstrap default) ──────────
+  # Demo default: consumer OFF (REST API only, no broker needed).
+  # Production: set NOTIFICATIONS_KAFKA_ENABLED=true; the KAFKA_BOOTSTRAP
+  # value below is overridden by ecommerce-env-config (deployment lists this
+  # configmap FIRST, then ecommerce-env-config, so the env value wins), which
+  # carries the Azure Event Hubs SASL_SSL endpoint. SASL credentials come from
+  # Azure Key Vault via external-secrets (spring.kafka.properties.* keys).
+  NOTIFICATIONS_KAFKA_ENABLED: "false"
+  KAFKA_BOOTSTRAP: localhost:9092
+
+  # Config server + Eureka endpoints (DNS names within the ecommerce ns).
+  CONFIG_SERVER_URL: http://config-service:8888
+  EUREKA_SERVER_URL: http://discovery-service:8761/eureka/

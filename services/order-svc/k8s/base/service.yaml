@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-svc
+  labels:
+    app: order-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: order-svc
+  ports:
+    - name: http
+      port: 8084
+      targetPort: http

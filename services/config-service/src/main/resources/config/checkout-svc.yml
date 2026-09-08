@@ -1,0 +1,34 @@
+# Served to the checkout-svc client on /checkout-svc/... and /checkout-svc/demo
+checkout:
+  message: Checkout orchestration service configuration
+  cart:
+    # Overridden in k8s via CHECKOUT_CART_BASE_URL (cart-svc ClusterIP DNS).
+    base-url: ${CHECKOUT_CART_BASE_URL:http://cart-svc:8082}
+    timeout-ms: 2000
+
+# Registers with discovery-service; overridden in k8s via EUREKA_SERVER_URL.
+spring:
+  application:
+    name: checkout-svc
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://discovery-service:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo

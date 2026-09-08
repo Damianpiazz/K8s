@@ -1,0 +1,5 @@
+# Served to the shipping-svc client
+shipping:
+  message: Shipping service configuration
+  default-carrier: Ecommerce Express
+  tracking-prefix: EC

@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation-svc
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: recommendation-svc
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: discovery-service
+  labels:
+    app: discovery-service
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # Only meaningful once replicas > 1. Keeps node drains from taking down
+  # the single dev replica.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: discovery-service

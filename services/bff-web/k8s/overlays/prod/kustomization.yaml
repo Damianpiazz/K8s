@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production overlay — thin: replica counts + resources + ACR image name.
+resources:
+  - ../../base
+
+patches:
+  - path: patches/deployment-patch.yaml
+    target:
+      kind: Deployment
+      name: bff-web
+  - path: patches/hpa-patch.yaml
+    target:
+      kind: HorizontalPodAutoscaler
+      name: bff-web
+
+# CD (git push to main) rewrites newTag to the commit SHA. Replace `acr` with
+# your real ACR login server ONCE.
+images:
+  - name: acr.azurecr.io/bff-web
+    newName: acr.azurecr.io/bff-web
+    newTag: latest

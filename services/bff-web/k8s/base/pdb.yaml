@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: bff-web
+  labels:
+    app: bff-web
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: bff-web

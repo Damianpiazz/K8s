@@ -1,0 +1,67 @@
+{
+  "realm": "ecommerce",
+  "enabled": true,
+  "displayName": "E-commerce Platform",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginTheme": "keycloak",
+  "accountTheme": "keycloak",
+  "adminTheme": "keycloak",
+  "defaultSignatureAlgorithm": "RS256",
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Platform administrators" },
+      { "name": "user",  "description": "Regular e-commerce users" }
+    ]
+  },
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "email": "demo@ecommerce.local",
+      "firstName": "Demo",
+      "lastName": "User",
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "demo123", "temporary": false }
+      ],
+      "realmRoles": [ "user" ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "ecommerce-web",
+      "name": "E-commerce Web Application (SPA)",
+      "description": "Public client — browser frontend. No secret, PKCE enabled.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [ "http://localhost:*", "https://api.<domain>/callback" ],
+      "webOrigins": [ "http://localhost:*", "https://api.<domain>" ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "ecommerce-api",
+      "name": "E-commerce API (gateway / machine-to-machine)",
+      "description": "Confidential client. JWTs validated by the api-gateway via JWKS. REPLACE the placeholder secret.",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+      "attributes": {
+        "use.jwks.url": "true"
+      }
+    }
+  ]
+}

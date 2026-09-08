@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cart-svc
+  labels:
+    app: cart-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # NOTE: with the in-memory store, replicas do NOT share carts. Use the Redis
+  # store before scaling out beyond 1 replica (see CartService).
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: cart-svc

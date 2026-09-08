@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  annotations:
+    # Let's Encrypt certs via cert-manager. The letsencrypt-default ClusterIssuer
+    # is layered per environment: cluster/overlays/{dev,staging,prod}/issuer-default.yaml
+    cert-manager.io/cluster-issuer: letsencrypt-default
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Underlying service is HTTP-only; TLS terminates at the ingress.
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+  labels:
+    app: api-gateway
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # Single entrypoint for the whole platform. Replace api.<domain> with your
+  # DNS zone (external-dns picks the hostname up and creates the A record).
+  ingressClassName: nginx
+  rules:
+    - host: api.<domain>
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - api.<domain>
+      secretName: api-gateway-tls

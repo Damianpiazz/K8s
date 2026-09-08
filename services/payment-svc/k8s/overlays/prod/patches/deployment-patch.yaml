@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-svc
+spec:
+  # ⚠️ scaling out with the in-memory store fragments payments across pods.
+  # Switch to the JPA/Postgres store (see k8s/base/configmap.yaml) first.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: payment-svc
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  # HA for Keycloak needs the distributed cache. This image starts with
+  # `start-dev` (no JGroups), so keep replicas at 2 max unless the container
+  # entrypoint is switched to `kc.sh start --cache-stack=kubernetes` (see
+  # Dockerfile prod section) — real prod then wants 3 replicas + Postgres.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: auth
+          resources:
+            requests:
+              cpu: 300m
+              memory: 768Mi
+            limits:
+              cpu: 1500m
+              memory: 1536Mi

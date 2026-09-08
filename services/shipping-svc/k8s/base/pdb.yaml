@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shipping-svc
+  labels:
+    app: shipping-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # NOTE: with the in-memory store, replicas do NOT share shipments. Use a
+  # database-backed store before scaling out (see README).
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: shipping-svc

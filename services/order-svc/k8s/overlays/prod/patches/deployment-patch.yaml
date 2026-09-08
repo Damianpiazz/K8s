@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-svc
+spec:
+  # ⚠️ scaling out with the H2 store fragments data across pods.
+  # Switch to Azure managed Postgres (SPRING_DATASOURCE_URL override in
+  # k8s/base/configmap.yaml) before relying on more than 1 replica.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: order-svc
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

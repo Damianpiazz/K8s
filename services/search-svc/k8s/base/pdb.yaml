@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: search-svc
+  labels:
+    app: search-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # NOTE: with the in-memory index, replicas each hold the same static catalog
+  # (read-only, seeded identically) — the hot-search counter is per-pod.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: search-svc

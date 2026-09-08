@@ -1,0 +1,13 @@
+# Served to the notification-svc client
+notification:
+  message: Notification service configuration
+  default-channel: email
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+  # Kafka topic defaults (Azure Event Hubs in production via KAFKA_BOOTSTRAP env)
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}

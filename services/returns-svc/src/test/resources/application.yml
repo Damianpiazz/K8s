@@ -1,0 +1,9 @@
+# Test profile: no Eureka, no external config server.
+eureka:
+  client:
+    enabled: false
+
+returns:
+  auto-approvable-reasons: defective,wrong-item,not-as-described
+  return-window-days: 30
+  max-quantity-auto-approve: 10

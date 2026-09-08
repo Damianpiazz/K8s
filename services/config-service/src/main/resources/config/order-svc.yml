@@ -1,0 +1,18 @@
+# Served to the order-svc client
+order:
+  message: Order processing service configuration
+  max-items-per-order: 50
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+  datasource:
+    url: jdbc:h2:mem:orderdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop

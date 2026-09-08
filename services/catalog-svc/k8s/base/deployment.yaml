@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-svc
+  labels:
+    app: catalog-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-svc
+  template:
+    metadata:
+      labels:
+        app: catalog-svc
+        env: production
+        app.kubernetes.io/part-of: ecommerce-platform
+    spec:
+      serviceAccountName: catalog-svc
+      containers:
+        - name: catalog-svc
+          image: acr.azurecr.io/catalog-svc:latest
+          ports:
+            - name: http
+              containerPort: 8081
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: -XX:MaxRAMPercentage=75.0
+          envFrom:
+            # Service defaults (datasource, eureka/config URLs).
+            - configMapRef:
+                name: catalog-svc-config
+            # Per-environment overrides (LOG_LEVEL, DB_HOST, REDIS_HOST…).
+            - configMapRef:
+                name: ecommerce-env-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 3
+          # Spring writes /tmp (embedded Tomcat) — keep the fs writable.
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL

@@ -1,0 +1,17 @@
+# Served to the api-gateway client
+gateway:
+  message: API gateway configuration
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+  cloud:
+    gateway:
+      # Dev-only: relaxed CORS origins.
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - "http://localhost:*"

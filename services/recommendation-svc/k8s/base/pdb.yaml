@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: recommendation-svc
+  labels:
+    app: recommendation-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # NOTE: the seed model is static and read-only per pod; Redis-cached scores
+  # (production path) would be shared.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: recommendation-svc

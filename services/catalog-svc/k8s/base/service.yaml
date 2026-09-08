@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-svc
+  labels:
+    app: catalog-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: catalog-svc
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http

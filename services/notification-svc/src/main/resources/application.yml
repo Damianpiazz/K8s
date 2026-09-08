@@ -1,0 +1,49 @@
+# ── Notification service ────────────────────────────────────────────────────
+server:
+  port: 8086
+
+spring:
+  application:
+    name: notification-svc
+
+  config:
+    # Optional config-server import: when config-service is up, notification-svc.yml
+    # (and its `demo` profile block) load from it; when absent the app boots
+    # with the local defaults below. Set CONFIG_SERVER_URL in k8s.
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  kafka:
+    # Azure Event Hubs Kafka endpoint in prod — the KAFKA_BOOTSTRAP env comes
+    # from ecommerce-env-config (SASL_SSL, *.servicebus.windows.net:9093).
+    # Only used when notifications.kafka.enabled=true (consumer bean active).
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+
+# Same key as config-service notification-svc.yml — local default when the
+# config server is absent.
+notification:
+  default-channel: email
+
+notifications:
+  # Event-driven consumer switch (default OFF so tests/CI need no broker).
+  # Set NOTIFICATIONS_KAFKA_ENABLED=true in the environment to activate the
+  # Kafka/Event Hubs consumer (see NotificationConsumer).
+  kafka:
+    enabled: false
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      # Overridden in k8s via EUREKA_SERVER_URL env.
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-svc
+spec:
+  # ⚠️ scaling out with the in-memory store fragments notifications across
+  # pods. Switch to the Postgres store (JPA) before relying on >1 replica.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: notification-svc
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

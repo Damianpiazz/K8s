@@ -1,0 +1,38 @@
+# ── Recommendation service ─────────────────────────────────────────────────
+server:
+  port: 8092
+
+spring:
+  application:
+    name: recommendation-svc
+
+  config:
+    # Optional config-server import: when config-service is up,
+    # recommendation-svc.yml (and its `demo` profile block) load from it; when
+    # absent the app boots with the local defaults below. Set CONFIG_SERVER_URL
+    # in k8s.
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+# Same keys as config-service recommendation-svc.yml — local defaults when the
+# config server is absent.
+recommendation:
+  default-limit: 5
+  max-limit: 10
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      # Overridden in k8s via EUREKA_SERVER_URL env.
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true

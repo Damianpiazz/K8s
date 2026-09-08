@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: inventory-svc
+  labels:
+    app: inventory-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # NOTE: reservations + H2 are per-pod — see the README note on
+  # single-writer semantics before scaling out.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: inventory-svc

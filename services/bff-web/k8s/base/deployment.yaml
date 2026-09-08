@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff-web
+  labels:
+    app: bff-web
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bff-web
+  template:
+    metadata:
+      labels:
+        app: bff-web
+        env: production
+        app.kubernetes.io/part-of: ecommerce-platform
+    spec:
+      serviceAccountName: bff-web
+      containers:
+        - name: bff-web
+          image: acr.azurecr.io/bff-web:latest
+          ports:
+            - name: http
+              containerPort: 8090
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: -XX:MaxRAMPercentage=75.0
+            - name: EUREKA_SERVER_URL
+              value: http://discovery-service:8761/eureka/
+            - name: CONFIG_SERVER_URL
+              value: http://config-service:8888
+            - name: LOG_LEVEL
+              value: INFO
+            # In-cluster backend DNS names (ClusterIPs of catalog/cart).
+            - name: BFF_CATALOG_BASE_URL
+              value: http://catalog-svc:8081
+            - name: BFF_CART_BASE_URL
+              value: http://cart-svc:8082
+          envFrom:
+            # Per-environment overrides (LOG_LEVEL, ENVIRONMENT…).
+            - configMapRef:
+                name: ecommerce-env-config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 3
+          # Spring writes /tmp (embedded Netty) — keep the fs writable.
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL

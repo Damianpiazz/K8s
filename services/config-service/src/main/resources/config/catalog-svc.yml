@@ -1,0 +1,35 @@
+# Served to the catalog-svc client on /catalog-svc/... and /catalog-svc/demo
+catalog:
+  # JMX/observability helper — not used as a real metadata store here.
+  message: "Product catalog service configuration"
+  max-page-size: 100
+
+# Demo profile block — used when the service runs with SPRING_PROFILES_ACTIVE=native,demo
+spring:
+  profiles:
+    active: demo
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+  # Local/H2 datasource default for the demo profile.
+  datasource:
+    url: jdbc:h2:mem:catalogdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics

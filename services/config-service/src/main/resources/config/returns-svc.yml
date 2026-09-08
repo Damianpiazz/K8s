@@ -1,0 +1,8 @@
+# Served to the returns-svc client. The auto-approval rule (visible and
+# documented in returns-svc/README.md): reason on the allow-list, within the
+# return window, quantity under the cap → APPROVED; otherwise PENDING_REVIEW.
+returns:
+  message: Returns service configuration
+  auto-approvable-reasons: defective,wrong-item,not-as-described
+  return-window-days: 30
+  max-quantity-auto-approve: 10

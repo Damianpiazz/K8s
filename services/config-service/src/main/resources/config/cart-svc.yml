@@ -1,0 +1,16 @@
+# Served to the cart-svc client on /cart-svc/... and /cart-svc/demo
+cart:
+  message: Shopping cart service configuration
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+  # The cart store is an in-memory ConcurrentHashMap by default (see CartService).
+  # In production use Redis (Azure Cache). Set spring.data.redis.host to
+  # the REDIS_HOST env var provided by ecommerce-env-config ConfigMap.
+  # data:
+  #   redis:
+  #     host: ${REDIS_HOST:localhost}
+  #     port: ${REDIS_PORT:6379}

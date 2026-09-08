@@ -1,0 +1,7 @@
+src/*.log
+*.class
+.idea/
+.vscode/
+.git/
+.gitignore
+**/.DS_Store

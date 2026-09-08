@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-svc
+  labels:
+    app: order-svc
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: order-svc

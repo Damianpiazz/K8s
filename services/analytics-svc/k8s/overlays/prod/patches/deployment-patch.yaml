@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-svc
+spec:
+  # ⚠️ the per-pod event buffer means each replica only reports what IT saw;
+  # production ingestion streams to Event Hubs so reports are global.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: analytics-svc
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

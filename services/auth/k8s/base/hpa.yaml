@@ -1,0 +1,22 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth
+  labels:
+    app: auth
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth
+  minReplicas: 1
+  maxReplicas: 3   # Keycloak HA needs distributed cache — keep small unless
+                   # running `kc.sh start --cache-stack=kubernetes` (prod).
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

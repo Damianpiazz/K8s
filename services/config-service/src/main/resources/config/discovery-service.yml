@@ -1,0 +1,12 @@
+# Served to the discovery-service client
+discovery:
+  message: Eureka server configuration
+
+---
+spring:
+  config:
+    activate:
+      on-profile: demo
+eureka:
+  server:
+    eviction-interval-timer-in-ms: 5000

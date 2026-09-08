@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: config-service
+  labels:
+    app: config-service
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: config-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Every e-commerce platform service may fetch its configuration.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: ecommerce-platform
+    # Prometheus scraping (/actuator/prometheus) from the observability ns.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+  egress:
+    # DNS resolution (CoreDNS in kube-system).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Azure services + kube-apiserver (443) — e.g. Key Vault, ACR pulls happen
+    # at node level, but actuator and tracing exporters may reach out.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP

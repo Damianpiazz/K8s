@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping-svc
+spec:
+  # ⚠️ scaling out with the in-memory store fragments shipments across pods.
+  # Move to a database-backed store (see README) before enabling.
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: shipping-svc
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi

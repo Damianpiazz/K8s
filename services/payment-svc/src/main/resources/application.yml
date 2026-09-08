@@ -1,0 +1,46 @@
+# ── Payment processing service ─────────────────────────────────────────────
+server:
+  port: 8085
+
+spring:
+  application:
+    name: payment-svc
+
+  config:
+    # Optional config-server import: when config-service is up, payment-svc.yml
+    # (and its `demo` profile block) load from it; when absent the app boots
+    # with the local defaults below. Set CONFIG_SERVER_URL in k8s.
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  datasource:
+    # Demo default: in-memory H2 (matches config-service payment-svc.yml demo
+    # block). The demo store is actually a HashMap (see PaymentService) — the
+    # datasource is the future JPA/Postgres path. Production override via k8s
+    # ConfigMap: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:h2:mem:paymentdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # fine for demo; use `validate` + migrations with Postgres
+    open-in-view: false
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      # Overridden in k8s via EUREKA_SERVER_URL env.
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,5 @@
+# Served to the recommendation-svc client
+recommendation:
+  message: Recommendation service configuration
+  default-limit: 5
+  max-limit: 10

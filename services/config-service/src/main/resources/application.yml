@@ -1,0 +1,35 @@
+# ── Spring Cloud Config Server ──────────────────────────────────────────────
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-service
+
+  profiles:
+    active: native
+
+  cloud:
+    config:
+      server:
+        # Native profile: read config from the classpath /config directory.
+        # Every service's <name>.yml lives in src/main/resources/config/.
+        native:
+          search-locations: classpath:/config
+        # ── To switch to a Git backend later, use instead: ─────────────────
+        #   git:
+        #     uri: https://github.com/<you>/<config-repo>.git
+        #     default-label: main
+        #     clone-on-start: true
+        # ── …and remove the `native` block above. No client changes. ──
+
+# Overridden at deploy time if needed (SPRING_PROFILES_ACTIVE env).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,env
+  endpoint:
+    # /actuator/env is handy for debugging which property won. Read-only.
+    env:
+      enabled: true

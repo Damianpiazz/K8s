@@ -1,0 +1,37 @@
+# ── Analytics service ───────────────────────────────────────────────────────
+server:
+  port: 8096
+
+spring:
+  application:
+    name: analytics-svc
+
+  config:
+    # Optional config-server import: when config-service is up, analytics-svc.yml
+    # (and its `demo` profile block) load from it; when absent the app boots
+    # with the local defaults below. Set CONFIG_SERVER_URL in k8s.
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+# Same keys as config-service analytics-svc.yml — local defaults when the
+# config server is absent.
+analytics:
+  default-top-limit: 5
+  max-events-buffer: 10000
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      # Overridden in k8s via EUREKA_SERVER_URL env.
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
