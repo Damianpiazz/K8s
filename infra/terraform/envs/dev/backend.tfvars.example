@@ -1,0 +1,12 @@
+# ---------------------------------------------------------------------------
+# Example backend configuration. Copy to the values Terraform needs and pass
+# with `terraform init -backend-config=backend.tfvars`.
+#
+# Create the Azure Storage account + container first (see README.md), then
+# replace the placeholders below.
+# ---------------------------------------------------------------------------
+
+storage_account_name = "tfecommerce01"          # REPLACE: globally unique storage account
+container_name       = "tfstate"                 # must already exist
+key                  = "dev/ecommerce.terraform.tfstate"
+access_key           = "<storage-account-access-key>"  # REPLACE
