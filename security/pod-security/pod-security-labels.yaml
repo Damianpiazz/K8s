@@ -1,0 +1,89 @@
+---
+# Pod Security Admission (PSA) labels — tenant namespaces enforce `restricted`.
+#
+# This file is a kustomize STRATEGIC-MERGE PATCH, not a Namespace resource:
+# the Namespace objects themselves are owned SOLELY by
+# cluster/base/namespaces/namespaces.yaml (see kustomization.yaml here). The
+# patch merges the labels below into those Namespaces.
+#
+# Target namespaces: the 5 platform namespaces + ecommerce. The platform
+# namespaces (observability, security, platform, data) are set to audit+warn;
+# only the APPLICATION tenants (ecommerce) and the data layer (data) enforce.
+# WHY: see the mode matrix and the "Known blockers" section below — chart
+# workloads (kube-prometheus-stack DaemonSets, Kyverno, Argo CD) do NOT yet
+# satisfy every `restricted` requirement.
+#
+# The Spring Boot deployments DO satisfy `restricted` today (fixed): they set
+# runAsNonRoot true, runAsUser 1000, allowPrivilegeEscalation false,
+# capabilities drop ALL and seccompProfile RuntimeDefault — so ecommerce/data
+# need NO exclusion.
+#
+# PSa levels (K8s 1.23+):
+#   pod-security.kubernetes.io/enforce  — hard reject at admission
+#   pod-security.kubernetes.io/audit    — log violations to the audit log
+#   pod-security.kubernetes.io/warn     — return a warning to the client
+#
+# Promotion path (do NOT weaken): fix the chart-workload blockers below, then
+# flip the platform namespaces to enforce too.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    # audit+warn only: kube-prometheus-stack chart workloads (node-exporter
+    # DaemonSet uses hostPID/hostNetwork, kube-state-metrics/Grafana pods do
+    # not all declare seccompProfile) are NOT restricted-compliant yet.
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security
+  labels:
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+  labels:
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+
+# ── Pod Security ADMISSION EXCLUSIONS (documented, none currently needed) ───
+#
+# Services: NO exclusion needed — every service Deployment now satisfies
+# `restricted`: runAsNonRoot true, runAsUser 1000, allowPrivilegeEscalation
+# false, capabilities.drop [ALL] and seccompProfile RuntimeDefault (verified
+# on all 17 services/*/k8s/base/deployment.yaml). ecommerce/data keep
+# enforce=restricted with zero exclusions.
+#
+# Chart workloads in observability/platform WOULD need exclusions today — that
+# is why those namespaces are audit+warn only (they do not all declare
+# seccompProfile: the kube-prometheus-stack DaemonSets use hostPID/hostNetwork,
+# some chart pods omit the seccomp setting). Revisit before promoting them.

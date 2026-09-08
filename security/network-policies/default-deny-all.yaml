@@ -1,0 +1,28 @@
+---
+# GLOBAL default-deny safety net for the ecommerce namespace.
+#
+# NetworkPolicies are ADDITIVE: a pod's effective rule set is the UNION of
+# every policy that selects it. This policy selects ALL pods (empty podSelector)
+# and allows NOTHING, so:
+#   - pods already covered by a per-service NetworkPolicy
+#     (services/*/k8s/base/networkpolicy.yaml) are UNAFFECTED — their existing
+#     allow rules keep applying (union with "allow nothing" = unchanged);
+#   - any pod WITHOUT a per-service policy (ad-hoc jobs, forgotten services)
+#     gets full ingress+egress deny instead of cluster-wide default-allow.
+#
+# This is the "safety net" the per-service policies were designed against
+# (plan-ecommerce-k8s.md, section 4.6). Apply it AFTER the services: a
+# namespace-wide default-allow window exists between service rollout and this
+# applying — acceptable in GitOps (single apply of kustomize output).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  podSelector: {} # every pod in the namespace
+  policyTypes:
+    - Ingress
+    - Egress

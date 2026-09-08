@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Least-privilege RBAC samples for the ecommerce namespace (Phase 8 security).
+# sa-tokens.md is documentation (markdown) and is NOT a kustomize resource.
+
+namespace: ecommerce
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: ecommerce-platform
+
+resources:
+  - reader-role.yaml
+  - admin-ecommerce-role.yaml

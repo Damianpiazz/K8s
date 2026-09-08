@@ -1,0 +1,51 @@
+---
+# Namespaced READ-ONLY Role for developers (ecommerce namespace).
+#
+# Least privilege for debugging: view workloads, config, endpoints, events and
+# logs (pods/log). NO write verbs, NO secrets access — credentials stay with
+# the platform team and external-secrets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ecommerce-reader
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/status", "services", "endpoints", "configmaps", "events", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale", "statefulsets", "replicasets", "daemonsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies", "ingresses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  # NOTE: ServiceMonitors / PrometheusRules live in the `observability`
+  # namespace, not `ecommerce`. This Role is namespace-scoped to `ecommerce`
+  # and therefore CANNOT grant access to monitoring.coreos.com resources.
+  # A separate Role in observability is needed if developers require read-only
+  # access to ServiceMonitors (future task).
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ecommerce-reader-developers
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ecommerce-reader
+subjects:
+  # Replace with your directory group (AAD group for AKS RBAC) or users.
+  - kind: Group
+    name: platform-developers
+    apiGroup: rbac.authorization.k8s.io

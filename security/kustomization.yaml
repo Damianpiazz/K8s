@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# SECURITY-AS-CODE app layer (Phase 8) — sits on top of the Phase 3 platform
+# bootstrap (cluster/base: kyverno policies, external-secrets, namespaces).
+# Deliberately NO global `namespace:` here: this tree mixes a namespaced
+# safety net (network-policies, rbac → ecommerce) and cluster-scoped CRs
+# (secret-policies ClusterPolicy). Each child sets its own scope; the parent
+# only aggregates.
+#
+# Build:  kustomize build security
+# Apply:  kubectl apply -k security
+# (or wire into cluster/overlays/{env}/kustomization.yaml — see README.md).
+#
+# NOTE: pod-security is a COMPONENT consumed by the overlays (its PSA-label
+# patches target the base Namespaces, which are only visible to the ROOT
+# kustomization). It is intentionally NOT referenced from here: a component's
+# patches apply to the referencing kustomization's own accumulation, and this
+# dir accumulates no Namespaces. The overlays list it under `components:`.
+
+resources:
+  - network-policies
+  - rbac
+  - secret-policies

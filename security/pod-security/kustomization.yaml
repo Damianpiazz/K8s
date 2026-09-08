@@ -1,0 +1,29 @@
+---
+# Kustomize Component — Pod Security Standards labels (PSA), applied as a
+# strategic-merge PATCH on the Namespaces owned by cluster/base/namespaces.
+#
+# Single ownership fix: this dir used to declare its OWN Namespace objects
+# (same kind+name as the base ones), which made every overlay build fail with
+# "may not add resource with an already registered id: Namespace...ecommerce".
+# The Namespace objects now live ONLY in cluster/base/namespaces/namespaces.yaml;
+# this component carries ONLY the PSA label VALUES (pod-security-labels.yaml)
+# as patches.
+#
+# Why a Component instead of plain resources/patches: kustomize applies a
+# kustomization's patches only to resources accumulated IN that same
+# kustomization — the base Namespaces (loaded by cluster/base, visible in the
+# overlay build) are NOT visible from a nested kustomization. Component
+# patches, however, apply to the ROOT build's accumulation, so they merge the
+# labels into the Namespaces during cluster/overlays/{dev,staging,prod}
+# builds — the same apply pass as the workloads, before PSA admission.
+#
+# The overlays wire this in via `components: - ../../../security/pod-security`
+# (they also include ../../../security as a resource). A standalone
+# `kustomize build security` intentionally does NOT reference this component:
+# its patches would find no Namespaces in that build and error out.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+# No `namespace:` here — the patch targets are cluster-scoped Namespaces.
+patches:
+  - path: pod-security-labels.yaml
