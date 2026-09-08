@@ -1,0 +1,34 @@
+---
+# Helm values — CloudNativePG operator (in-cluster Postgres option).
+#
+# Install AFTER the operator Helm repo is added, BEFORE the Cluster CR:
+#   helm repo add cnpg https://cloudnative-pg.github.io/charts
+#   helm install cnpg cloudnative-pg/cloudnative-pg -n data \
+#     -f data/postgres/values-cloudnative-pg.yaml
+#
+# The operator watches the whole cluster and reconciles postgresql.cnpg.io/v1
+# Cluster resources (see data/postgres/manifests/cluster.yaml).
+# The Cluster CR must be created AFTER this operator is Healthy.
+#
+# Thin by design: the operator is only a controller — all Postgres specifics
+# (replicas, storage, backup) live in the Cluster CR, not here.
+---
+installCRDs: true
+
+# Operator pod resources — keep it lean for local/dev clusters
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Single replica is fine for a dev control plane
+replicaCount: 1
+
+# Pin the operator's image (there is no "latest" in production practice)
+image:
+  repository: ghcr.io/cloudnative-pg/cloudnative-pg
+  tag: 1.24.1            # check https://cloudnative-pg.io for the current release
+  pullPolicy: IfNotPresent

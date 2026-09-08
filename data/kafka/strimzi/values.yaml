@@ -1,0 +1,39 @@
+---
+# Helm values — Strimzi Kafka operator (in-cluster dev alternative).
+#
+# ALTERNATIVE to Azure Event Hubs (Kafka endpoint, Phase 2 default). Use for
+# local/dev clusters where no Event Hubs namespace exists.
+#
+#   helm repo add strimzi https://strimzi.io/charts/
+#   helm install strimzi strimzi/strimzi-kafka-operator -n kafka \
+#     -f data/kafka/strimzi/values.yaml
+#
+# The operator watches for kafka.strimzi.io/v1beta2 Kafka CRs — create the
+# actual cluster with data/kafka/strimzi/kafka-cluster.yaml AFTER the operator
+# is running. Namespace kafka must exist first:
+#   kubectl create ns kafka
+#
+# Thin by design: all broker-specific config lives in the Kafka CR.
+---
+# Watch all namespaces (single-cluster dev deployment)
+watchNamespaces: []
+
+# CRD management — the chart installs them; remove if you manage them yourself
+installCRDs: true
+
+# Operator resources — small control-plane footprint
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+replicas: 1
+
+# Operator image — pin a version, no floating tags
+image:
+  repository: quay.io/strimzi/operator
+  tag: 0.43.0            # check https://strimzi.io for the current release
+  pullPolicy: IfNotPresent

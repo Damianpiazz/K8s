@@ -1,0 +1,111 @@
+---
+# Strimzi Kafka CR — in-cluster Kafka for local/dev.
+#
+# ALTERNATIVE to the Azure Event Hubs Kafka endpoint (Phase 2 default).
+# Requires: Strimzi operator installed first (data/kafka/strimzi/values.yaml).
+#
+# DEV profile: 3 brokers with EPHEMERAL storage (no PVCs — restarts lose data,
+# fine for a dev cluster). Internal listener for in-cluster services + a
+# NodePort listener for local development from the host machine.
+#
+# Service DNS (once the cluster is Ready):
+#   bootstrap: ecommerce-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092
+# Override KAFKA_BOOTSTRAP in the per-env ConfigMap to point here.
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: ecommerce-kafka
+  namespace: kafka
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/component: messaging
+    env: dev
+spec:
+  kafka:
+    # Real cluster layout: 3 brokers so leadership moves work during restarts
+    replicas: 3
+
+    # DEV: ephemeral storage. Switch to persistent-claim for staging/prod:
+    #   storage:
+    #     type: persistent-claim
+    #     size: 20Gi
+    #     class: standard
+    storage:
+      type: ephemeral
+
+    listeners:
+      # 1) Internal — plaintext on the cluster network (dev only).
+      #    Production must use TLS (type: tls) or OAuth (type: oauth).
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+        configuration:
+          useServiceDnsDomain: true
+
+      # 2) External — NodePort for local development from the host machine.
+      #    Azure/managed deployments use the Event Hubs endpoint instead;
+      #    remove this listener on shared clusters.
+      - name: external
+        port: 9094
+        type: nodeport
+        tls: false
+        configuration:
+          # One NodePort per broker; pick a small base port range
+          bootstrap: 30892
+          brokers:
+            - broker: 0
+              nodePort: 30890
+            - broker: 1
+              nodePort: 30891
+            - broker: 2
+              nodePort: 30902
+
+    # Broker health/heartbeat tuning — keep defaults for dev
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      group.initial.rebalance.delay.ms: 0
+      auto.create.topics.enable: "true"
+
+    # Dev-sized broker pods
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 1Gi
+
+    # ── Metrics (PLACEHOLDER — commented by default) ─────────────────────
+    # Enable Prometheus metrics on the brokers:
+    #   1. uncomment metricsConfig below
+    #   2. the operator ships example ConfigMaps (kafka-metrics.yaml); as a
+    #      shortcut, set `strimzi.kafka.metrics` via the operator Helm values:
+    #      helm upgrade strimzi strimzi/strimzi-kafka-operator -n kafka \
+    #        --set strimzi.kafka.metrics=prometheus
+    # metricsConfig:
+    #   type: jmxPrometheusExporter
+    #   valueFrom:
+    #     configMapKeyRef:
+    #       name: kafka-metrics
+    #       key: kafka-metrics-config.yml
+
+  zookeeper:
+    replicas: 3
+    storage:
+      type: ephemeral   # dev; use persistent-claim for anything real
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  entityOperator:
+    # topicOperator keeps Topic CRs in sync with the cluster
+    topicOperator: {}
+    # userOperator keeps User CRs in sync (SCRAM/ACL management)
+    userOperator: {}

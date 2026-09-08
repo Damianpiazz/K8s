@@ -1,0 +1,30 @@
+---
+# REFERENCE ONLY — CloudNativePG operator install notes.
+#
+# The operator itself is installed via Helm (values in
+# data/postgres/values-cloudnative-pg.yaml). This file documents the flow and
+# the CRD contract; do NOT kubectl-apply this file directly — it is not a
+# manifest, it is the reference the Cluster CR depends on.
+#
+# Install sequence (namespace data already exists from cluster/base):
+#
+#   1. Add the chart repo and install the operator:
+#        helm repo add cnpg https://cloudnative-pg.github.io/charts
+#        helm install cnpg cloudnative-pg/cloudnative-pg -n data \
+#          -f data/postgres/values-cloudnative-pg.yaml
+#
+#   2. Verify the CRDs were installed and the controller is up:
+#        kubectl -n data get deploy cnpg-cloudnative-pg
+#        kubectl get crd clusters.postgresql.cnpg.io
+#
+#   3. Create the credentials Secret and the Cluster CR:
+#        kubectl apply -f data/postgres/manifests/postgres-creds.yaml
+#        kubectl apply -f data/postgres/manifests/cluster.yaml
+#
+#   4. Check the Cluster becomes Ready and the primary is reachable:
+#        kubectl -n data get clusters.postgresql.cnpg.io ecommerce-db
+#        kubectl -n data get pods -l cnpg.io/cluster=ecommerce-db
+#
+# The Cluster CR (cluster.yaml) is the single source of truth for the actual
+# database: instances, storage, initdb bootstrap, and (once uncommented) the
+# backup objectStore. Everything in this file is coordination only.

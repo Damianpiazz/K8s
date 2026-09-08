@@ -1,0 +1,75 @@
+---
+# CloudNativePG Cluster — in-cluster PostgreSQL for local/dev.
+#
+# This is the ALTERNATIVE to the Azure-managed Flexible Server from Phase 2.
+# Use it when the cluster has no managed Postgres (minikube/kind, or a dev
+# overlay without Azure resources).
+#
+# Prerequisites:
+#   - CNPG operator installed first (data/postgres/values-cloudnative-pg.yaml)
+#   - Secret postgres-creds exists in namespace data (postgres-creds.yaml)
+#
+# Service DNS (once the cluster is Ready):
+#   primary:  ecommerce-db-rw.data.svc.cluster.local:5432
+#   replicas: ecommerce-db-ro.data.svc.cluster.local:5432
+# Override DB_HOST/DB_PORT in the per-env ConfigMap to point here.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ecommerce-db
+  namespace: data
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/component: database
+    env: dev
+spec:
+  # One primary + one replica — small enough for a dev cluster, real HA layout
+  instances: 2
+
+  # Bootstrap from the credentials Secret (initdb path, no existing backups)
+  bootstrap:
+    initdb:
+      secret:
+        name: postgres-creds   # kubernetes.io/basic-auth, keys: username/password
+      database: ecommerce      # created on first boot
+      owner: ecommerce         # owner of the database above
+
+  # Basic Postgres tuning — keep it modest for dev hardware
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: 128MB
+      work_mem: 4MB
+
+  # Storage per instance — PVCs are provisioned per replica
+  storage:
+    size: 10Gi
+    storageClass: standard   # replace with your cluster's default class name
+
+  # ── Backup (PLACEHOLDER — disabled by default) ─────────────────────────
+  # Enable production backups by uncommenting and pointing at your blob store.
+  # Requires: a secret with the Azure Blob Storage credentials in namespace data.
+  #
+  # backup:
+  #   barmanObjectStore:
+  #     destinationPath: azure://ecommerce-backups/postgres
+  #     azureStorage:
+  #       connectionString:
+  #         name: cnpg-backup-creds
+  #         key: connectionString
+  #     retentionPolicy: "30d"
+  #   # Optional scheduled backups:
+  #   # schedule:
+  #   #   full: "0 2 * * *"    # daily full backup
+
+  # Resource envelopes for the Postgres pods
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+  # Affinity/tolerations intentionally empty — dev cluster has a single
+  # node pool. Add per-node-pool placement here when the cluster grows.

@@ -1,0 +1,22 @@
+---
+# Placeholder credentials for the in-cluster Postgres (dev/local only).
+#
+# The CloudNativePG Cluster bootstrap reads username/password from this Secret
+# (kubernetes.io/basic-auth: keys `username` + `password`).
+#
+# WARNING — placeholder only. Replace `change-me` before real use, or better:
+# in the managed path, external-secrets owns credentials (see
+# cluster/base/external-secrets/example-external-secret.yaml) and this file is
+# not used at all.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-creds
+  namespace: data
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/component: database
+type: kubernetes.io/basic-auth
+stringData:
+  username: ecommerce
+  password: change-me   # REPLACE — or drive from external-secrets in managed setups

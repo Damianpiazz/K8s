@@ -1,0 +1,62 @@
+---
+# Helm values — Bitnami Redis (in-cluster dev alternative).
+#
+# ALTERNATIVE to Azure Cache for Redis (Phase 2, the managed default). Use for
+# minikube/kind/local dev when there is no Azure managed Redis to point at.
+#
+#   helm repo add bitnami https://charts.bitnami.com/bitnami
+#   kubectl create secret generic redis-creds -n data \
+#     --from-literal=redis-password=change-me
+#   helm install redis bitnami/redis -n data -f data/redis/values.yaml
+#
+# Service DNS (dev): redis-master.data.svc.cluster.local:6379
+# Override REDIS_HOST/REDIS_PORT in the per-env ConfigMap to point here.
+
+# Standalone node — appropriate for local/dev; the managed path (Azure Cache
+# for Redis) already handles HA + clustering in the cloud.
+architecture: standalone
+
+auth:
+  enabled: true
+  # Password comes from the existing secret (keys: redis-password).
+  # Create it BEFORE helm install (command above).
+  existingSecret: redis-creds
+  existingSecretPasswordKey: redis-password
+
+master:
+  # Dev-sized storage
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: standard   # replace with your cluster's default class name
+
+  # Small resource envelopes for local clusters
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+replica:
+  # Standalone mode → no replicas; keep the chart from creating any
+  replicaCount: 0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Metrics sidecar — nice for local dashboards, cheap to keep on
+metrics:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

@@ -1,0 +1,50 @@
+---
+# (OPTIONAL) Helm values — Patroni chart alternative.
+#
+# CloudNativePG (default values-cloudnative-pg.yaml) is the recommended
+# in-cluster Postgres operator for this project: it is CNCF-graduated, has
+# first-class backup support, and its Cluster CR is simpler to reason about.
+#
+# Patroni (https://patroni.readthedocs.io) is a classic HA solution with a
+# proven track record (Zalando). Use it ONLY if you have a specific reason:
+# - you already run Patroni elsewhere and want a consistent operational model
+# - you need its synchronous-replication / failover semantics in depth
+#
+# THIS FILE IS DOCUMENTATION-ONLY — it is intentionally NOT a complete,
+# ready-to-render values file. It outlines the shape so you can build on it
+# with the Zalando chart (https://github.com/zalando/patroni-chart):
+#
+#   helm repo add zalando https://opensource.zalando.com/postgres-operator/charts
+#   helm install patroni zalando/patroni -n data -f <this-file-extended>
+#
+# Key sketch (verify against the current chart README before using):
+#
+# clusterName: ecommerce-db
+# image:
+#   repository: registry.opensource.zalan.do/acid/spilo-16
+#   tag: 3.0-p1   # pin a real version
+# postgresql:
+#   parameters:
+#     max_connections: "100"
+#   pg_hba:
+#     - host all all 0.0.0.0/0 md5
+# numberOfInstances: 2
+# env:
+#   - name: PGPASSWORD_SUPERUSER
+#     valueFrom:
+#       secretKeyRef: { name: postgres-creds, key: password }
+# persistentVolume:
+#   size: 10Gi
+# resources:
+#   requests: { cpu: 100m, memory: 256Mi }
+#   limits:   { cpu: 500m, memory: 512Mi }
+# tolerations: []        # match your node pool
+# nodeSelector: {}       # match your node pool
+#
+# Trade-off notes:
+# - Spilo images are larger and opinionated (postgres + etcd/consul deps).
+# - Patroni needs a DCS (etcd/consul/zk) for leader election — one more
+#   moving part to operate on a dev cluster.
+# - CloudNativePG manages the same HA story (replicas + PVC failover)
+#   without an external DCS dependency.
+# Decision: use CloudNativePG unless the DCS-based model is a hard requirement.
