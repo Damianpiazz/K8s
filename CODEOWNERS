@@ -1,0 +1,48 @@
+# ─── CI / CD pipelines ───
+/.github/                              @ecommerce-platform/platform-eng
+/.gitlab-ci.yml                        @ecommerce-platform/platform-eng
+
+# ─── Infrastructure ───
+/infra/                                @ecommerce-platform/platform-eng
+
+# ─── Cluster (GitOps) ───
+/cluster/                              @ecommerce-platform/platform-eng
+
+# ─── Services ───
+/services/api-gateway/                 @ecommerce-platform/api-gateway
+/services/auth/                        @ecommerce-platform/identity
+/services/catalog-svc/                 @ecommerce-platform/checkout-ordering
+/services/cart-svc/                    @ecommerce-platform/checkout-ordering
+/services/checkout-svc/                @ecommerce-platform/checkout-ordering
+/services/order-svc/                   @ecommerce-platform/checkout-ordering
+/services/payment-svc/                 @ecommerce-platform/payments
+/services/notification-svc/            @ecommerce-platform/comms
+/services/search-svc/                  @ecommerce-platform/discovery
+/services/recommendation-svc/          @ecommerce-platform/discovery
+/services/inventory-svc/               @ecommerce-platform/fulfillment
+/services/shipping-svc/                @ecommerce-platform/fulfillment
+/services/returns-svc/                 @ecommerce-platform/fulfillment
+/services/analytics-svc/               @ecommerce-platform/data
+/services/bff-web/                     @ecommerce-platform/web
+
+# ─── Data layer ───
+/data/                                 @ecommerce-platform/platform-eng
+
+# ─── Observability ───
+/observability/                        @ecommerce-platform/platform-eng
+
+# ─── Security ───
+/security/                             @ecommerce-platform/security
+
+# ─── Scripts ───
+/scripts/                              @ecommerce-platform/platform-eng
+
+# ─── Tests ───
+/tests/                                @ecommerce-platform/qa
+
+# ─── Documentation ───
+/docs/                                 @ecommerce-platform/docs
+
+# ─── Root files ───
+/README.md                             @ecommerce-platform/platform-eng
+/CODEOWNERS                            @ecommerce-platform/platform-eng
