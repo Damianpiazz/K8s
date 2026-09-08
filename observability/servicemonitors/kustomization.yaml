@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ServiceMonitors for the 17 e-commerce services (Phase 8 app layer).
+#
+# Applied as part of the observability/ tree (see observability/kustomization.yaml)
+# which the orchestrator wires into cluster/overlays/{env}/kustomization.yaml.
+# Prometheus picks these up because the kube-prometheus-stack values open
+# serviceMonitorSelector + serviceMonitorNamespaceSelector.
+
+namespace: observability
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: ecommerce-platform
+
+resources:
+  - servicemonitors.yaml

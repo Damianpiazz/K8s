@@ -1,0 +1,36 @@
+---
+# Alert: JVM heap usage above 85% of max for 10 minutes.
+#
+# Spring Boot (Micrometer) exposes jvm_memory_used_bytes / jvm_memory_max_bytes
+# with area="heap". The ratio is computed per service (job). 85% sustained heap
+# is the "inspect before it OOMs" line; combined with the deployment memory
+# limit (512Mi in services/*/k8s/base/deployment.yaml) this typically surfaces
+# before the container is OOMKilled.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: jvm-memory-pressure
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  groups:
+    - name: ecommerce-jvm
+      rules:
+        - alert: JvmMemoryPressure
+          expr: >-
+            sum(jvm_memory_used_bytes{namespace="ecommerce", area="heap"}) by (job)
+            / clamp_min(sum(jvm_memory_max_bytes{namespace="ecommerce", area="heap"}) by (job), 1)
+            > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            team: ecommerce
+          annotations:
+            summary: "JVM heap of {{ $labels.job }} above 85%"
+            description: >-
+              Heap usage of {{ $labels.job }} has been above 85% of the
+              maximum for more than 10 minutes (current: {{ $value | humanizePercentage }}).
+              Dump the heap or raise the memory limit after verifying the
+              application's baseline footprint.
+            runbook: "https://example.com/runbooks/jvm-memory-pressure" # TODO: replace with your runbook URL

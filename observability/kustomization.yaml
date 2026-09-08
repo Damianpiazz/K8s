@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# APP-LEVEL observability (Phase 8) — sits on top of the Phase 3 platform
+# bootstrap (cluster/base/monitoring). Everything here is a set of CRs the
+# deployed kube-prometheus-stack consumes because its values.yaml opens the
+# selectors (see ../cluster/base/monitoring/kube-prometheus-stack/values.yaml).
+#
+# What's here and what is NOT:
+#   - servicemonitors/  → 17 ServiceMonitors scraping /actuator/prometheus
+#   - dashboards/       → 3 Grafana dashboards (ConfigMaps via configMapGenerator,
+#                         sidecar label grafana_dashboard: "1")
+#   - alerts/           → 4 PrometheusRules (service down / 5xx / p99 / JVM heap)
+#   - otel/             → guidance-only (not applied): OTLP env reference
+#   - podmonitors/      → intentionally empty, see podmonitors/README.md
+#
+# Build:  kustomize build observability
+# Apply:  kubectl apply -k observability
+# (or better: wire into cluster/overlays/{env}/kustomization.yaml — see README.md)
+
+resources:
+  - servicemonitors
+  - alerts
+  - dashboards

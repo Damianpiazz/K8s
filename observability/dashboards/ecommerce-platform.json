@@ -1,0 +1,2577 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 200,
+      "panels": [],
+      "title": "Platform overview",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "id": 201,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "count(up{namespace=\"ecommerce\"} == 1)",
+          "legendFormat": "services up",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Services UP (of 17)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "id": 202,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "count(up{namespace=\"ecommerce\"} == 0)",
+          "legendFormat": "services down",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Services DOWN",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.5 },
+              { "color": "red", "value": 2 }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "id": 203,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"ecommerce\"}[5m]))",
+          "legendFormat": "rps",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Total requests/s",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.05 },
+              { "color": "red", "value": 0.1 }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "id": 204,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{namespace=\"ecommerce\"}[5m])), 0.001)",
+          "legendFormat": "platform 5xx ratio",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Platform error rate (5xx ratio)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 205,
+      "panels": [],
+      "title": "Per service (repeats for every service)",
+      "type": "row"
+    },  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 300,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1001,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "config-service",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1002,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "config-service 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1003,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "config-service p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 301,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1011,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "discovery-service",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1012,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "discovery-service 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1013,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "discovery-service p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 302,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1021,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "api-gateway",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1022,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "api-gateway 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1023,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "api-gateway p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 303,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1031,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "auth",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1032,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "auth 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1033,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "auth p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 304,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1041,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "catalog-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1042,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "catalog-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1043,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "catalog-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 305,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1051,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "cart-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1052,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "cart-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1053,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "cart-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 306,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1061,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "checkout-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1062,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "checkout-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1063,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "checkout-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 307,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1071,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "order-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1072,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "order-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1073,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "order-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 308,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1081,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "payment-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1082,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "payment-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1083,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "payment-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 309,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1091,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "notification-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1092,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "notification-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1093,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "notification-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 310,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1101,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "bff-web",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1102,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "bff-web 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1103,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "bff-web p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 311,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1111,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "search-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1112,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "search-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1113,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "search-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 312,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1121,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "recommendation-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1122,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "recommendation-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1123,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "recommendation-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 313,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1131,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "inventory-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1132,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "inventory-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1133,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "inventory-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 314,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1141,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "shipping-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1142,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "shipping-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1143,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "shipping-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 315,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1151,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "returns-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1152,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "returns-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1153,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "returns-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  },
+  {
+    "collapsed": true,
+    "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+    "id": 316,
+    "panels": [
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "thresholds" },
+            "mappings": [
+              { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+        "id": 1161,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+          "textMode": "auto"
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "up{job=~\"$service\", namespace=\"ecommerce\"}",
+            "legendFormat": "analytics-svc",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Up",
+        "type": "stat"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.05 },
+                { "color": "red", "value": 0.1 }
+              ]
+            },
+            "unit": "percentunit"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 4, "y": 0 },
+        "id": 1162,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$service\", namespace=\"ecommerce\"}[5m])), 0.001)",
+            "legendFormat": "analytics-svc 5xx ratio",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Error rate (5xx ratio, 5m)",
+        "type": "timeseries"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "custom": {
+              "fillOpacity": 20,
+              "lineWidth": 2,
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": { "group": "A", "mode": "none" }
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            },
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": { "h": 3, "w": 10, "x": 14, "y": 0 },
+        "id": 1163,
+        "options": {
+          "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+          "tooltip": { "mode": "multi", "sort": "desc" }
+        },
+        "targets": [
+          {
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "editorMode": "code",
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$service\", namespace=\"ecommerce\"}[5m])) by (le))",
+            "legendFormat": "analytics-svc p99",
+            "range": true,
+            "refId": "A"
+          }
+        ],
+        "title": "Latency p99 (5m)",
+        "type": "timeseries"
+      }
+    ],
+    "repeat": "service",
+    "title": "$service",
+    "type": "row"
+  }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["ecommerce", "platform", "sdd"],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(up{namespace=\"ecommerce\"}, job)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": "label_values(up{namespace=\"ecommerce\"}, job)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "E-commerce platform — all services",
+  "uid": "ecommerce-platform",
+  "version": 1,
+  "weekStart": ""
+}

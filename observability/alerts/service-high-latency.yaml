@@ -1,0 +1,34 @@
+---
+# Alert: per-service p99 latency above 2 seconds for 5 minutes.
+#
+# Matches the latency SLI definition in observability/dashboards/service-sli.json
+# (histogram_quantile(0.99, rate(bucket[5m]))). The 2s budget is a demo default
+# — tune per service in the TP demo if needed.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: service-high-latency
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  groups:
+    - name: ecommerce-service-latency
+      rules:
+        - alert: ServiceHighLatency
+          expr: >-
+            histogram_quantile(0.99,
+              sum(rate(http_server_requests_seconds_bucket{namespace="ecommerce"}[5m])) by (le, job))
+            > 2
+          for: 5m
+          labels:
+            severity: warning
+            team: ecommerce
+          annotations:
+            summary: "Service {{ $labels.job }} p99 latency above 2s"
+            description: >-
+              The p99 latency of {{ $labels.job }} has been above 2 seconds
+              for more than 5 minutes (current: {{ $value | humanizeDuration }}).
+              Inspect the Spring Boot overview dashboard and check for GC
+              pressure, blocked threads or downstream timeouts.
+            runbook: "https://example.com/runbooks/high-latency" # TODO: replace with your runbook URL

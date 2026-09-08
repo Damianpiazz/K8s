@@ -1,0 +1,47 @@
+---
+# GUIDANCE ONLY — NOT applied by kustomize.
+#
+# This ConfigMap is a documentation aid: it shows the exact environment
+# variables the services would need to export metrics/traces to the platform
+# OpenTelemetry Collector (cluster/base/monitoring/opentelemetry-collector).
+# It is deliberately NOT included in observability/kustomization.yaml.
+#
+# Why a doc and not a sidecar: the collector is already deployed by Phase 3
+# (cluster/base/monitoring/opentelemetry-collector/collector.yaml) and the
+# services are already scraped by Prometheus via micrometer-registry-prometheus
+# (verified in every services/*/pom.xml). Reinventing an agent sidecar would
+# duplicate what the platform bootstrap already provides.
+#
+# What students must add per service (application-side, out of scope for this
+# directory):
+#   1. Dependency (pom.xml) when they want OTLP:
+#        <dependency> <groupId>io.micrometer</groupId>
+#        <artifactId>micrometer-registry-otlp</artifactId> </dependency>
+#      and/or the OpenTelemetry Java agent for traces:
+#        -javaagent:/path/opentelemetry-javaagent.jar
+#   2. The env vars below on the Deployment (or as defaults in the service's
+#      ConfigMap).
+#
+# The collector listens on 4317 (gRPC) / 4318 (HTTP). Correct in-cluster DNS:
+#   otel-collector.observability.svc.cluster.local   (name.namespace.svc...)
+# A bare `otel-collector.observability` works identically — Kubernetes appends
+# the .svc.cluster.local search domain for same-cluster lookups.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-env-reference
+  namespace: observability
+  annotations:
+    "sdd/guidance-only": "true"
+data:
+  # Copy these keys as env vars into your service Deployment (see
+  # services/*/k8s/base/deployment.yaml env section) when you wire OTLP.
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc" # or: http/protobuf against :4318
+  OTEL_SERVICE_NAME: "catalog-svc"    # set to the app name of each service
+  OTEL_METRICS_EXPORTER: "otlp"       # keep the Prometheus registry too — the
+                                      # ServiceMonitors in ../servicemonitors
+                                      # scrape /actuator/prometheus regardless.
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_LOGS_EXPORTER: "none"          # logs pipeline not deployed yet
+  OTEL_PROPAGATORS: "tracecontext,baggage"

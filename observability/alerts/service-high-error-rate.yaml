@@ -1,0 +1,36 @@
+---
+# Alert: per-service HTTP 5xx ratio above 5% for 5 minutes.
+#
+# The ratio uses only the HISTOGRAM COUNTER family (status is a label on
+# http_server_requests_seconds_count) — the error budget formula behind the
+# "error" SLI in observability/dashboards/service-sli.json.
+#
+# clamp_min() on the denominator avoids division by zero when a service has no
+# traffic: ratio then evaluates to 0 (alert stays silent).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: service-high-error-rate
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  groups:
+    - name: ecommerce-service-errors
+      rules:
+        - alert: ServiceHighErrorRate
+          expr: >-
+            sum(rate(http_server_requests_seconds_count{namespace="ecommerce", status=~"5.."}[5m])) by (job)
+            / clamp_min(sum(rate(http_server_requests_seconds_count{namespace="ecommerce"}[5m])) by (job), 0.001)
+            > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            team: ecommerce
+          annotations:
+            summary: "Service {{ $labels.job }} error rate above 5%"
+            description: >-
+              {{ $labels.job }} is returning 5xx for more than 5% of its
+              requests over the last 5 minutes (current: {{ $value | humanizePercentage }}).
+              Check recent deploys, downstream dependencies and database health.
+            runbook: "https://example.com/runbooks/high-error-rate" # TODO: replace with your runbook URL

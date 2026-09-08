@@ -1,0 +1,37 @@
+---
+# Alert: a scrape target in the ecommerce namespace stopped being UP.
+#
+# WHY `namespace="ecommerce"` and NOT `job=~".*ecommerce.*"`:
+# the ServiceMonitors set spec.jobLabel: app, so the Prometheus `job` label is
+# the plain service name (config-service, catalog-svc, ...) — it never contains
+# the string "ecommerce". The `namespace` label is added by the ServiceMonitor
+# relabelings (source: __meta_kubernetes_namespace) and is the reliable selector.
+#
+# `for: 1m` → a scrape failure must persist before firing (Prometheus reports
+# up==0 as soon as a scrape fails; 1m absorbs transient blips from Pod
+# rescheduling during deploys).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: service-down
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  groups:
+    - name: ecommerce-service-down
+      rules:
+        - alert: ServiceDown
+          expr: up{namespace="ecommerce"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            team: ecommerce
+          annotations:
+            summary: "Service {{ $labels.job }} is down"
+            description: >-
+              Prometheus cannot scrape {{ $labels.job }} in namespace
+              {{ $labels.namespace }} (up == 0 for more than 1 minute).
+              Check the Deployment, Pod status and the
+              /actuator/prometheus endpoint.
+            runbook: "https://example.com/runbooks/service-down" # TODO: replace with your runbook URL

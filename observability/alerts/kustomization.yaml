@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# PrometheusRules for the app layer (Phase 8). Picked up by the deployed
+# kube-prometheus-stack because its values.yaml opens the rule selectors
+# (ruleSelector: {}, ruleSelectorNilUsesHelmValues: false) and the rules live
+# in the observability namespace like the platform example
+# (cluster/base/monitoring/dashboard-example.yaml).
+
+namespace: observability
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: ecommerce-platform
+
+resources:
+  - service-down.yaml
+  - service-high-error-rate.yaml
+  - service-high-latency.yaml
+  - jvm-memory-pressure.yaml

@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Grafana dashboards as code — provisioned through the kube-prometheus-stack
+# Grafana dashboard sidecar.
+#
+# Sidecar contract (cluster/base/monitoring/kube-prometheus-stack/values.yaml
+# does NOT override the grafana.sidecar.* settings → the HELM CHART DEFAULTS
+# apply):
+#   - label  : grafana_dashboard = "1"   (the chart's default dashboard label)
+#   - search : the sidecar watches ConfigMaps and picks up data keys ending
+#              in .json
+#   - uid    : the default Prometheus datasource provisioned by the chart has
+#              uid "prometheus" — every panel references it explicitly.
+#
+# configMapGenerator produces one ConfigMap per dashboard and appends a
+# content-hash suffix (e.g. grafana-dashboard-spring-boot-overview-<hash>).
+# That is intentional: the sidecar reacts to LABELS, and the hash suffix means
+# a JSON change produces a fresh ConfigMap → sidecar reloads the dashboard.
+# Run `bash scripts/update-dashboards.sh` or `kubectl apply -k
+# observability/dashboards` to (re)generate.
+
+namespace: observability
+
+configMapGenerator:
+  - name: grafana-dashboard-spring-boot-overview
+    files:
+      - spring-boot-overview.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+        app.kubernetes.io/part-of: ecommerce-platform
+  - name: grafana-dashboard-ecommerce-platform
+    files:
+      - ecommerce-platform.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+        app.kubernetes.io/part-of: ecommerce-platform
+  - name: grafana-dashboard-service-sli
+    files:
+      - service-sli.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+        app.kubernetes.io/part-of: ecommerce-platform
+
+# generators are suffixed with a content hash by kustomize; replacements keep
+# the label stable regardless of the generated name.
+generatorOptions:
+  disableNameSuffixHash: false
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform

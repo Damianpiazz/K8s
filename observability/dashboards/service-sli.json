@@ -1,0 +1,374 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 300,
+      "panels": [],
+      "title": "SLIs (the TP demo: availability, latency, errors)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 99 },
+              { "color": "green", "value": 99.9 }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 1 },
+      "id": 301,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "avg(up{job=~\"$app\", namespace=~\"$namespace\"})",
+          "legendFormat": "availability",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "SLI 1 — Availability (avg up, 0..1)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 1 },
+      "id": 302,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$app\", namespace=~\"$namespace\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$app\", namespace=~\"$namespace\"}[5m])), 0.001)",
+          "legendFormat": "error ratio",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "SLI 2 — Error ratio (5xx / total, 5m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 1 },
+      "id": 303,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$app\", namespace=~\"$namespace\"}[5m])) by (le))",
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "SLI 3 — Latency p99 (5m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "percentunit"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "SLO target (99.9%)" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 304,
+      "options": {
+        "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "avg(up{job=~\"$app\", namespace=~\"$namespace\"})",
+          "legendFormat": "availability",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "0.999",
+          "legendFormat": "SLO target (99.9%)",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Availability vs SLO target",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 305,
+      "options": {
+        "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=~\"$app\", namespace=~\"$namespace\"}[5m])) by (le))",
+          "legendFormat": "{{job}} p99",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Latency p99 (5m window)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "percentunit"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "SLO target (1%)" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
+              { "id": "custom.lineWidth", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "id": 306,
+      "options": {
+        "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$app\", namespace=~\"$namespace\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$app\", namespace=~\"$namespace\"}[5m])), 0.001)",
+          "legendFormat": "{{job}} error ratio",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "0.01",
+          "legendFormat": "SLO target (1%)",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Error ratio vs SLO target",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "id": 307,
+      "options": {
+        "legend": { "calcs": ["last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$app\", namespace=~\"$namespace\"}[5m])) by (job)",
+          "legendFormat": "{{job}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Traffic (requests/s) — the denominator of the error SLI",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["ecommerce", "sli", "slo", "sdd"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(namespace)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "namespace",
+        "multi": false,
+        "name": "namespace",
+        "options": [],
+        "query": "label_values(namespace)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(up{namespace=~\"$namespace\"}, job)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "app",
+        "multi": true,
+        "name": "app",
+        "options": [],
+        "query": "label_values(up{namespace=~\"$namespace\"}, job)",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Service SLIs — availability / latency / errors",
+  "uid": "service-sli",
+  "version": 1,
+  "weekStart": ""
+}

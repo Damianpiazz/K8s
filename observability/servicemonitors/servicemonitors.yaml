@@ -1,0 +1,495 @@
+---
+# ServiceMonitors — app-level scraping for the 17 e-commerce services.
+#
+# Phase 8 app layer: the Phase 3 kube-prometheus-stack bootstrap opens its
+# selectors (cluster/base/monitoring/kube-prometheus-stack/values.yaml:
+#   serviceMonitorSelector: {} and serviceMonitorNamespaceSelector: {})
+# so Prometheus discovers ServiceMonitors from ANY namespace — these land in
+# `observability` alongside the other monitoring resources.
+#
+# CONTRACT with the stack:
+#   - namespaceSelector.matchNames: [ecommerce] is REQUIRED: a ServiceMonitor
+#     only matches Services in its OWN namespace by default. These live in
+#     observability, the Services live in ecommerce.
+#   - spec.jobLabel: app  → the scrape job label becomes `job=<svc-name>`,
+#     exactly what the platform rule in
+#     cluster/base/monitoring/dashboard-example.yaml expects (job="order-svc").
+#   - honorLabels: true → the app's own metric labels win over target labels.
+#   - interval 30s matches the demo budget (6h retention, small scrape volume).
+#   - path /actuator/prometheus + named port `http` — the convention every
+#     service declares in services/*/k8s/base/service.yaml (port name `http`,
+#     targetPort `http`, containerPort == service port).
+#
+# NetworkPolicy note: each service's per-service NetworkPolicy
+# (services/*/k8s/base/networkpolicy.yaml) already allows ingress from the
+# `observability` namespace and the `app.kubernetes.io/name: prometheus` pod,
+# so scraping is permitted end-to-end.
+
+### ── Infrastructure services ──────────────────────────────────────────────
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: config-service
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: config-service
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: discovery-service
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: discovery-service
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: api-gateway
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: api-gateway
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: auth
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      # Keycloak 24 exposes Prometheus metrics at /metrics (NOT
+      # /actuator/prometheus — that path only exists on the Spring Boot
+      # services). In prod, the metrics endpoint may require a token: enable
+      # bearerTokenSecret on this endpoint or expose /metrics through the
+      # realm's admin (see Keycloak docs "Enabling Prometheus metrics").
+      path: /metrics
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: auth
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+
+### ── Business services ────────────────────────────────────────────────────
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: catalog-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: catalog-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cart-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: cart-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: checkout-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: checkout-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: order-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: order-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: payment-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: payment-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: notification-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: notification-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: bff-web
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: bff-web
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: search-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: search-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: recommendation-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: recommendation-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: inventory-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: inventory-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: shipping-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: shipping-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: returns-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: returns-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: analytics-svc
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/managed-by: sdd
+spec:
+  jobLabel: app
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      honorLabels: true
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_label_env]
+          targetLabel: env
+  selector:
+    matchLabels:
+      app: analytics-svc
+  namespaceSelector:
+    matchNames:
+      - ecommerce
