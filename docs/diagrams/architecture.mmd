@@ -1,0 +1,149 @@
+%% Architecture — e-commerce platform on Kubernetes (AKS / minikube / kind)
+%% Render at https://mermaid.live — see README.md in this folder.
+%% Edges follow the real NetworkPolicies and ingress wiring in the repo.
+
+flowchart TB
+    subgraph Users
+        BR[Browser / SPA]
+        DEV[Developer / CLI]
+    end
+
+    subgraph Ingress["ingress-nginx (namespace ingress-nginx)"]
+        ING[nginx ingress controller]
+    end
+
+    subgraph EdgeNS["namespace: ecommerce — edge"]
+        GW[api-gateway<br/>Spring Cloud Gateway :8080]
+        BFF[bff-web<br/>Backend-for-Frontend]
+    end
+
+    subgraph CoreSvc["namespace: ecommerce — Auth & Discovery"]
+        AUTH[auth — Keycloak :8080]
+        DISC[discovery-service<br/>Eureka :8761]
+        CFG[config-service<br/>Spring Cloud Config :8888]
+    end
+
+    subgraph BizSvc["namespace: ecommerce — business services"]
+        CAT[catalog-svc :8081]
+        CRT[cart-svc]
+        CHK[checkout-svc]
+        ORD[order-svc]
+        PAY[payment-svc]
+        NT[notification-svc]
+        SRC[search-svc]
+        REC[recommendation-svc]
+        INV[inventory-svc]
+        SHP[shipping-svc]
+        RET[returns-svc]
+        ANL[analytics-svc]
+    end
+
+    subgraph DataPlane["namespace: data (in-cluster alternative) / Azure managed"]
+        PG[(PostgreSQL<br/>Flexible Server / CNPG)]
+        RD[(Redis<br/>Cache / Bitnami)]
+        EH{{Event Hubs<br/>Kafka endpoint}}
+    end
+
+    subgraph Observability["namespace: observability"]
+        PROM[Prometheus<br/>17 ServiceMonitors]
+        GRA[Grafana<br/>SLI dashboards]
+        OTL[OTel Collector]
+        ALR[Alertmanager<br/>4 PrometheusRules]
+    end
+
+    subgraph SecNS["namespace: security"]
+        KYV[Kyverno — policies]
+        ESO[External Secrets<br/>Azure Key Vault]
+    end
+
+    subgraph GitOps["namespace: argocd"]
+        ARG[Argo CD<br/>app-of-apps]
+    end
+
+    %% External
+    ACR[(ACR — acr.azurecr.io)]
+    KV[(Azure Key Vault)]
+
+    %% Ingress → gateway
+    BR -->|"HTTPS api.<domain>"| ING
+    ING -->|"JWT at the edge"| GW
+    ING -->|"bff host"| BFF
+
+    %% Gateway → services (Eureka lb://)
+    GW --> AUTH
+    GW --> BFF
+    GW --> CAT
+    GW --> CRT
+    GW --> CHK
+    GW --> ORD
+    GW --> PAY
+    GW --> SRC
+    GW --> REC
+
+    %% BFF aggregate path
+    BFF --> CAT
+    BFF --> CRT
+    BFF --> CHK
+
+    %% Business → peers (allowed by per-service egress policies)
+    CHK --> ORD
+    ORD --> PAY
+    ORD --> INV
+    ORD --> NT
+    PAY --> SHP
+    CHECKOUTx[checkout-svc] -.JPMS?.- CRT
+
+    %% Auth propagation (gateway validates; services trust peers)
+    GW -.bearer token.-> BFF
+
+    %% Discovery + config
+    CAT -.->|register| DISC
+    CRT -.->|register| DISC
+    ORD -.->|register| DISC
+    CAT -.->|config| CFG
+    ORD -.->|config| CFG
+
+    %% Data plane
+    CAT -->|5432| PG
+    ORD -->|5432| PG
+    PAY -->|5432| PG
+    CRT -->|6380 TLS| RD
+    INV -->|TLS| EH
+    NT -->|Kafka| EH
+    ANL -->|Kafka| EH
+
+    %% Platform/security cross-cutting
+    ACR -.pull image.-> GW
+    ACR -.pull image.-> CAT
+    ARG -.syncs Git→cluster.-> GW
+    ARG -.syncs Git→cluster.-> CAT
+    ESO -->|secrets| KV
+    ESO -.Secret material.-> AUTH
+    ESO -.Secret material.-> ORD
+    KYV -.admission audit/enforce.-> GW
+    KYV -.admission audit/enforce.-> CAT
+
+    %% Observability scrapes (per service NetworkPolicy allows prometheus)
+    PROM -->|/actuator/prometheus :http| GW
+    PROM -->|/actuator/prometheus :http| CAT
+    PROM -->|/actuator/prometheus :http| ORD
+    PROM --> GRA
+    PROM --> ALR
+    OTL --> GRA
+
+    classDef env fill:#0f172a,color:#e2e8f0,stroke:#334155;
+    classDef core fill:#1e3a8a,color:#dbeafe,stroke:#3b82f6;
+    classDef biz fill:#134e4a,color:#ccfbf1,stroke:#14b8a6;
+    classDef data fill:#451a03,color:#fed7aa,stroke:#ea580c;
+    classDef obs fill:#4a044e,color:#f5d0fe,stroke:#a855f7;
+    classDef sec fill:#3f3f46,color:#f4f4f5,stroke:#71717a;
+    classDef git fill:#7f1d1d,color:#fee2e2,stroke:#ef4444;
+
+    class ING env;
+    class GW,BFF core;
+    class AUTH,DISC,CFG core;
+    class CAT,CRT,CHK,ORD,PAY,NT,SRC,REC,INV,SHP,RET,ANL biz;
+    class PG,RD,EH data;
+    class PROM,GRA,OTL,ALR obs;
+    class KYV,ESO sec;
+    class ARG git;

@@ -1,0 +1,60 @@
+%% Network policies — the real per-service + default-deny wiring.
+%% source of truth: security/network-policies/ + services/*/k8s/base/networkpolicy.yaml
+%% Render at https://mermaid.live — see README.md in this folder.
+
+flowchart LR
+    subgraph defaultDeny["default-deny-all (empty podSelector)"]
+        DENY[All pods: ingress + egress denied<br/>unless a policy allows the flow]
+    end
+
+    subgraph kube["kube-system"]
+        DNS[kube-dns :53]
+    end
+
+    subgraph ingressNs["ingress-nginx namespace"]
+        INGC[ingress-nginx controller]
+    end
+
+    subgraph obs["observability namespace"]
+        PROM[Prometheus<br/>app.kubernetes.io/name: prometheus]
+    end
+
+    subgraph ec["ecommerce namespace"]
+        GW[api-gateway]
+        BIZ[catalog, cart, order,<br/>payment, ... 16 peers]
+        PEERS[egress rule:<br/>app.kubernetes.io/part-of:<br/>ecommerce-platform]
+        IDB[ipBlock 0.0.0.0/0 :443<br/>:5432 only for catalog]
+    end
+
+    subgraph dataNs["data namespace"]
+        PG[(postgres)]
+        RD[(redis)]
+    end
+
+    DENY -.overrides nothing, fills the gaps.-> GW
+    DENY -.overrides nothing, fills the gaps.-> BIZ
+
+    %% api-gateway: ingress only from ingress-nginx + prometheus
+    INGC ==>|"ingress: allowed (443)"| GW
+    PROM ==>|"ingress: /actuator/prometheus (http)"| GW
+    PROM ==>|"ingress: /actuator/prometheus (http)"| BIZ
+
+    %% business services: ingress only from api-gateway (+ prometheus above)
+    GW ==>|"ingress: allowed (808x)"| BIZ
+
+    %% egress
+    BIZ ==>|"egress: manifest-defined (all policies)"| DNS
+    BIZ ==>|"egress: label-scoped peers"| PEERS
+    BIZ ==>|"egress: TLS to Azure"| IDB
+    IDB -.->|"443 (Azure APIs), 5432 (catalog→Postgres)"| PG
+
+    %% denials that the picture must NOT show an arrow for:
+    %% browser can never reach a service directly — only through INGC → GW.
+
+    classDef deny fill:#450a0a,color:#fee2e2,stroke:#ef4444,stroke-width:2px;
+    classDef allowed fill:#052e16,color:#dcfce7,stroke:#22c55e,stroke-width:2px;
+    classDef infra fill:#1e1b4b,color:#e0e7ff,stroke:#6366f1;
+
+    class DENY deny;
+    class INGC,PROM,DNS infra;
+    class GW,BIZ,PEERS,IDB allowed;

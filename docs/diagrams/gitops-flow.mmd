@@ -1,0 +1,34 @@
+%% GitOps flow — from commit to running Pod, following cd.yml + Argo CD.
+%% Render at https://mermaid.live — see README.md in this folder.
+
+sequenceDiagram
+    autonumber
+    participant D as Developer
+    participant GH as GitHub (ci.yml / cd.yml)
+    participant ACR as ACR (acr.azurecr.io)
+    participant ARG as Argo CD (app-of-apps)
+    participant K as Cluster (ecommerce ns)
+
+    Note over D,GH: CI (pull request)
+    D->>GH: push feature branch
+    GH->>GH: ci.yml: Maven test (mvn -B test) — 17 services
+    GH->>GH: ci.yml: docker build 17 images, gitleaks + trivy scan
+    GH->>GH: ci.yml: kustomize build + helm lint (gate)
+
+    Note over GH,ACR: CD (merge to main / env branch)
+    GH->>ACR: build & push image <acr>.azurecr.io/<svc>:<sha>
+    GH->>GH: GITOPS == argocd ? yq patch newTag:<sha> per env overlay (dev/staging/prod)
+    GH->>GH: commit newTag rewrite to Git (Git is the source of truth)
+    GH->>ARG: cd.yml triggers argocd app sync ecommerce-<env>
+
+    Note over ARG,K: Argo CD reconciles Git → cluster
+    ARG->>ARG: app-of-apps reads cluster/overlays/<env>
+    ARG->>K: apply kustomize-rendered manifests (selfHeal + prune)
+    K->>K: Kyverno admission: labels, no :latest, PSA restricted
+    K-->>ARG: status Synced / Healthy
+    ARG-->>GH: sync result (UI / health status)
+    ARG-->>D: demo: http://<argo-cd-server> shows app tree
+
+    Note over K,ACR: Runtime
+    K->>ACR: imagePull acr.azurecr.io/<svc>:<sha>
+    K->>K: HPA scales replicas; PDB protects drains
