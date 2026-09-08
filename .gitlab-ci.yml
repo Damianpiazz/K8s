@@ -1,0 +1,132 @@
+# ─── GitLab CI — alternative pipeline for the e-commerce platform ───
+# Mirrors the GitHub Actions workflows. Uses Azure AKS + ACR.
+
+stages:
+  - build
+  - scan
+  - test
+  - deploy
+
+variables:
+  AKS_NAME: "${AKS_NAME}"
+  AKS_RG: "${AKS_RG}"
+  ACR_NAME: "${ACR_NAME}"
+  IMAGE_TAG: "${CI_COMMIT_SHORT_SHA}"
+
+# ─────────────────────────────────────────────
+# Build: Docker images for each service
+# ─────────────────────────────────────────────
+.build-service:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - echo "${ACR_PASSWORD}" | docker login "${ACR_NAME}.azurecr.io" -u "${ACR_USERNAME}" --password-stdin
+  script:
+    - |
+      SVC_DIR="services/${SERVICE}"
+      if [ ! -f "${SVC_DIR}/Dockerfile" ]; then
+        echo "No Dockerfile for ${SERVICE} — skipping."
+        exit 0
+      fi
+    - docker build -t "${ACR_NAME}.azurecr.io/${SERVICE}:${IMAGE_TAG}" "${SVC_DIR}"
+    - docker push "${ACR_NAME}.azurecr.io/${SERVICE}:${IMAGE_TAG}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+
+build:api-gateway:
+  extends: .build-service
+  variables:
+    SERVICE: api-gateway
+
+build:auth:
+  extends: .build-service
+  variables:
+    SERVICE: auth
+
+build:catalog-svc:
+  extends: .build-service
+  variables:
+    SERVICE: catalog-svc
+
+build:order-svc:
+  extends: .build-service
+  variables:
+    SERVICE: order-svc
+
+build:payment-svc:
+  extends: .build-service
+  variables:
+    SERVICE: payment-svc
+
+build:notification-svc:
+  extends: .build-service
+  variables:
+    SERVICE: notification-svc
+
+build:bff-web:
+  extends: .build-service
+  variables:
+    SERVICE: bff-web
+
+# ─────────────────────────────────────────────
+# Scan: Trivy on built images
+# ─────────────────────────────────────────────
+.scan-image:
+  stage: scan
+  image:
+    name: aquasec/trivy:0.52.0
+    entrypoint: [""]
+  script:
+    - trivy image --severity CRITICAL,HIGH --exit-code 1 "${ACR_NAME}.azurecr.io/${SERVICE}:${IMAGE_TAG}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+
+scan:api-gateway:
+  extends: .scan-image
+  variables:
+    SERVICE: api-gateway
+
+scan:catalog-svc:
+  extends: .scan-image
+  variables:
+    SERVICE: catalog-svc
+
+# ─────────────────────────────────────────────
+# Test: placeholder for service tests
+# ─────────────────────────────────────────────
+test:unit:
+  stage: test
+  image: eclipse-temurin:17-jdk
+  script:
+    - echo "Run unit tests here (mvn test, npm test, go test, etc.)"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
+
+# ─────────────────────────────────────────────
+# Deploy: push to AKS via kubectl
+# ─────────────────────────────────────────────
+deploy:prod:
+  stage: deploy
+  image: mcr.microsoft.com/azure-cli:latest
+  variables:
+    KUBECTL_VERSION: "v1.30.0"
+  before_script:
+    - az login --service-principal -u "${AZURE_CLIENT_ID}" -p "${AZURE_CLIENT_SECRET}" --tenant "${AZURE_TENANT_ID}"
+    - az aks get-credentials --resource-group "${AKS_RG}" --name "${AKS_NAME}"
+    - curl -sSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+    - chmod +x /usr/local/bin/kubectl
+  script:
+    - kubectl apply -k cluster/overlays/prod
+    - kubectl rollout status deployment -n ecommerce --timeout=300s || true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: on_success
