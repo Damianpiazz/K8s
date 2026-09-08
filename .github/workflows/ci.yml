@@ -1,0 +1,207 @@
+# ─── CI: build, lint, test, scan on every PR and push to main ───
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+env:
+  ACR_NAME: ${{ vars.ACR_NAME }}
+
+jobs:
+  # ── Service matrix build (validates Dockerfiles when present) ──
+  build-services:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - config-service
+          - discovery-service
+          - api-gateway
+          - auth
+          - catalog-svc
+          - cart-svc
+          - checkout-svc
+          - order-svc
+          - payment-svc
+          - notification-svc
+          - search-svc
+          - recommendation-svc
+          - inventory-svc
+          - shipping-svc
+          - returns-svc
+          - analytics-svc
+          - bff-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Skip if no Dockerfile
+        id: check
+        run: |
+          if [ -f "services/${{ matrix.service }}/Dockerfile" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No Dockerfile found for ${{ matrix.service }} — skipping."
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.exists == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        if: steps.check.outputs.exists == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: false
+          tags: ${{ env.ACR_NAME }}.azurecr.io/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Service tests (Spring Boot / Java 17 when pom.xml exists) ──
+  test-services:
+    name: Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - config-service
+          - discovery-service
+          - api-gateway
+          - auth
+          - catalog-svc
+          - cart-svc
+          - checkout-svc
+          - order-svc
+          - payment-svc
+          - notification-svc
+          - search-svc
+          - recommendation-svc
+          - inventory-svc
+          - shipping-svc
+          - returns-svc
+          - analytics-svc
+          - bff-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        if: hashFiles(format('services/{0}/pom.xml', matrix.service)) != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run Maven tests
+        if: hashFiles(format('services/{0}/pom.xml', matrix.service)) != ''
+        run: mvn -B test --file services/${{ matrix.service }}/pom.xml
+
+  # ── Kustomize / Helm lint (guards skip until those dirs exist) ──
+  lint-manifests:
+    name: Lint manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Helm lint
+        if: hashFiles('**/Chart.yaml') != ''
+        run: |
+          for chart in $(find . -name Chart.yaml -not -path '*/node_modules/*'); do
+            dir=$(dirname "$chart")
+            echo "Linting $dir ..."
+            helm lint "$dir"
+          done
+
+      - name: Install Kustomize
+        if: hashFiles('cluster/**') != ''
+        uses: imranismail/setup-kustomize@v2
+        with:
+          kustomize-version: "5.3.0"
+
+      - name: Kustomize build
+        if: hashFiles('cluster/**') != ''
+        run: |
+          for overlay in cluster/overlays/*/; do
+            if [ -d "$overlay" ]; then
+              echo "Building $overlay ..."
+              kustomize build "$overlay" > /dev/null
+            fi
+          done
+
+  # ── Secret scanning (Gitleaks) ──
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Trivy filesystem scan ──
+  trivy-scan:
+    name: Trivy filesystem scan
+    runs-on: ubuntu-latest
+    # Lenient on PRs, fail-closed on main (push)
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+
+  # ── SBOM generation ──
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    # Lenient on PRs, fail-closed on main (push)
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: sbom.sarif
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.sarif
+          retention-days: 30

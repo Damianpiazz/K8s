@@ -1,0 +1,92 @@
+# ─── Reusable workflow: build and optionally push a Docker image to ACR ───
+name: Reusable Build
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: "Service name (used as image name)"
+        required: true
+        type: string
+      dockerfile:
+        description: "Dockerfile path relative to context"
+        required: false
+        type: string
+        default: "Dockerfile"
+      context:
+        description: "Build context directory"
+        required: true
+        type: string
+      platforms:
+        description: "Target platforms for buildx"
+        required: false
+        type: string
+        default: "linux/amd64"
+      push:
+        description: "Push image to registry after build"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      AZURE_CREDENTIALS:
+        description: "Azure service principal JSON"
+        required: true
+      ACR_USERNAME:
+        description: "ACR admin username"
+        required: true
+      ACR_PASSWORD:
+        description: "ACR admin password"
+        required: true
+    outputs:
+      image:
+        description: "Full image reference that was built"
+        value: ${{ jobs.build.outputs.image }}
+
+env:
+  ACR_NAME: ${{ vars.ACR_NAME }}
+
+jobs:
+  build:
+    name: Build ${{ inputs.service }}
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Compute image metadata
+        id: meta
+        run: |
+          IMAGE="${{ env.ACR_NAME }}.azurecr.io/${{ inputs.service }}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "tagged=${IMAGE}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "latest=${IMAGE}:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.context }}/${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: |
+            ${{ steps.meta.outputs.tagged }}
+            ${{ steps.meta.outputs.latest }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

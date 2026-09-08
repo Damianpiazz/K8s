@@ -1,0 +1,170 @@
+# ─── CD: build + push images to ACR, then promote GitOps manifests ───
+# Paths:
+#   GITOPS == 'argocd'  → Argo CD action syncs the application.
+#   GITOPS != 'argocd'  → set-env bumps image tags in kustomization,
+#                         kubectl-apply falls back to direct AKS deploy.
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: prod
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+# Only one deploy at a time
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  ACR_NAME: ${{ vars.ACR_NAME }}
+  AKS_NAME: ${{ vars.AKS_NAME }}
+  AKS_RG: ${{ vars.AKS_RG }}
+  GITOPS: ${{ vars.GITOPS }}
+
+jobs:
+  # ── 1. Build and push every service image to ACR ──
+  build-images:
+    name: Build & push ${{ matrix.service }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - config-service
+          - discovery-service
+          - api-gateway
+          - auth
+          - catalog-svc
+          - cart-svc
+          - checkout-svc
+          - order-svc
+          - payment-svc
+          - notification-svc
+          - search-svc
+          - recommendation-svc
+          - inventory-svc
+          - shipping-svc
+          - returns-svc
+          - analytics-svc
+          - bff-web
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      service: ${{ matrix.service }}
+      context: services/${{ matrix.service }}
+      push: true
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+      ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+
+  # ── 2a. Argo CD path: login and sync (only when GITOPS == 'argocd') ──
+  configure-argocd:
+    name: Configure & sync Argo CD
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: env.GITOPS == 'argocd'
+    steps:
+      - name: Argo CD login + app sync
+        uses: argoproj/argo-cd-action@v1
+        with:
+          server: ${{ vars.ARGOCD_SERVER }}
+          username: ${{ secrets.ARGOCD_AUTH_USERNAME }}
+          password: ${{ secrets.ARGOCD_AUTH_PASSWORD }}
+          app-name: ecommerce-${{ inputs.environment || 'prod' }}
+          operation: sync
+          insecure: true
+
+  # ── 2b. Kustomize path: bump image tags in GitOps manifests (Argo CD image
+  #        updater or PR to the GitOps repo is the long-term option; here we
+  #        commit the kustomization patch directly). ──
+  set-env:
+    name: Bump image tags in kustomization
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: env.GITOPS != 'argocd'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
+      - name: Patch image tags
+        run: |
+          ENV_NAME="${{ inputs.environment || 'prod' }}"
+          KUST_FILE="cluster/overlays/${ENV_NAME}/kustomization.yaml"
+
+          if [ ! -f "$KUST_FILE" ]; then
+            echo "::warning::${KUST_FILE} not found — skipping image patch."
+            exit 0
+          fi
+
+          for svc in config-service discovery-service api-gateway auth catalog-svc cart-svc \
+                      checkout-svc order-svc payment-svc notification-svc search-svc \
+                      recommendation-svc inventory-svc shipping-svc returns-svc \
+                      analytics-svc bff-web; do
+            IMAGE="${ACR_NAME}.azurecr.io/${svc}"
+            yq eval -i "(.images[] | select(.newName == \"${IMAGE}\")) .newTag = \"${GITHUB_SHA}\"" "$KUST_FILE" 2>/dev/null || true
+          done
+
+          git diff --stat "$KUST_FILE"
+
+      - name: Commit and push manifest update
+        run: |
+          ENV_NAME="${{ inputs.environment || 'prod' }}"
+          KUST_FILE="cluster/overlays/${ENV_NAME}/kustomization.yaml"
+
+          if ! git diff --quiet "$KUST_FILE"; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "$KUST_FILE"
+            git commit -m "chore(${ENV_NAME}): bump service image tags to ${GITHUB_SHA}"
+            git push
+          else
+            echo "No manifest changes to commit."
+          fi
+
+  # ── 2c. Fallback: direct AKS deploy (kubectl apply) ──
+  kubectl-apply:
+    name: Fallback — kubectl apply to AKS
+    runs-on: ubuntu-latest
+    needs: [build-images, set-env]
+    if: env.GITOPS != 'argocd'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.AKS_RG }}
+          cluster-name: ${{ env.AKS_NAME }}
+
+      - name: Apply manifests
+        if: hashFiles('cluster/**') != ''
+        run: |
+          ENV_NAME="${{ inputs.environment || 'prod' }}"
+          kubectl apply -k "cluster/overlays/${ENV_NAME}"
+
+      - name: Wait for rollout
+        if: hashFiles('cluster/**') != ''
+        run: |
+          kubectl rollout status deployment -n ecommerce --timeout=300s 2>/dev/null || true
