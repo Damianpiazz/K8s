@@ -1,0 +1,60 @@
+---
+# kube-prometheus-stack Helm chart values.
+#
+# Consumed by:
+#   - Argo CD Application kube-prometheus-stack (multi-source, $values path)
+#   - helmfile.yaml (alternative bootstrap)
+#
+# Design goals (see docs/plan-ecommerce-k8s.md):
+#   - Cost-conscious for a student cluster: Alertmanager off, default rules off,
+#     short Prometheus retention, Grafana WITHOUT persistent storage.
+#   - Selectors are OPENED so the stack discovers the ServiceMonitors the
+#     services emit (Phase 4+) from ANY namespace, and the example
+#     PrometheusRule (dashboard-example.yaml) is loaded regardless of labels.
+
+# Default alert/record rules from the chart are disabled — the platform ships
+# its own SLO rules (see dashboard-example.yaml).
+defaultRules:
+  create: false
+
+# Alertmanager is not needed for the student budget; keep the cost low.
+alertmanager:
+  enabled: false
+
+grafana:
+  # PLACEHOLDER — change this, or better: override it via the
+  # grafana.spec.adminPasswordSecret (external-secrets) in Phase 4.
+  adminPassword: <grafana-admin-password>
+  persistence:
+    enabled: false # no PVC — dashboards are provisioned via ConfigMaps
+  # ServiceMonitor for grafana itself would be nice, but skip for now (cost).
+
+# Control-plane components that AKS manages for you — no need to scrape them.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: true
+
+prometheus:
+  prometheusSpec:
+    retention: 6h # dev budget: 6 hours of history is enough for demos
+    # No persistent volume — a fresh scrape history on restart is fine in dev.
+    storageSpec: {}
+    # Open the rule/ServiceMonitor selectors so resources from ALL namespaces
+    # (ecommerce, observability, ...) are picked up:
+    ruleSelectorNilUsesHelmValues: false
+    ruleSelector: {}
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+
+nodeExporter:
+  enabled: true
+  # Allow node-exporter to run on system pools (AKS taints its system pool).
+  tolerations:
+    - operator: Exists
+
+kubeStateMetrics:
+  enabled: true

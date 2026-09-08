@@ -1,0 +1,46 @@
+---
+# ingress-nginx Helm chart values.
+#
+# Consumed by:
+#   - Argo CD Application ingress-nginx (multi-source, $values path)
+#   - helmfile.yaml (alternative bootstrap)
+#
+# Design notes:
+#   - The chart's own IngressClass resource is disabled; the default
+#     IngressClass is provided by cluster/base/ingress-nginx/ingress-class.yaml
+#     so the cluster has exactly ONE source of truth for "the default class".
+#   - metrics.serviceMonitor is enabled and placed in the observability
+#     namespace so kube-prometheus-stack picks it up (selectors are open,
+#     see monitoring/kube-prometheus-stack/values.yaml).
+controller:
+  ingressClass: nginx
+  ingressClassResource:
+    enabled: false
+  service:
+    annotations:
+      # Azure health probe for the public load balancer that fronts nginx.
+      service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: observability
+  config:
+    # Size limits and forwarding headers for a typical e-commerce workload.
+    proxy-body-size: 10m
+    use-forwarded-headers: "true"
+    compute-full-forwarded-for: "true"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "10254"
+
+# DefaulBackend is not needed — 404s come from nginx itself.
+defaultBackend:
+  enabled: false

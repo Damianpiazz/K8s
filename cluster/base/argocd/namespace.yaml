@@ -1,0 +1,11 @@
+---
+# Argo CD namespace — included here for completeness.
+# The same namespace is also created by namespaces.yaml.
+# Kustomize will deduplicate automatically.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    env: platform

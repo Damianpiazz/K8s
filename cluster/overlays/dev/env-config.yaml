@@ -1,0 +1,32 @@
+---
+# Per-environment ConfigMap — DEV.
+#
+# Services consume this via envFrom in their Deployments (Phase 5+).
+# Values reflect Azure-managed resources created by infra/terraform (Phase 2).
+# Replace placeholder FQDNs with actual terraform outputs.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-env-config
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    env: dev
+data:
+  ENVIRONMENT: dev
+  LOG_LEVEL: DEBUG
+
+  # ── Data connections (Azure-managed, replace with terraform outputs) ────
+  DB_HOST: pg-dev-ecommerce.postgres.database.azure.com
+  DB_PORT: "5432"
+  DB_NAME: ecommerce
+  REDIS_HOST: redis-dev-ecommerce.redis.cache.windows.net
+  REDIS_PORT: "6380"
+
+  # ── Messaging (Azure Event Hubs Kafka endpoint) ────────────────────────
+  KAFKA_BOOTSTRAP: ns-dev-ecommerce.servicebus.windows.net:9093
+  KAFKA_SECURITY_PROTOCOL: SASL_SSL
+
+  # ── Feature flags (dev-only extras) ────────────────────────────────────
+  ENABLE_SWAGGER: "true"
+  ENABLE_MOCK_DATA: "true"

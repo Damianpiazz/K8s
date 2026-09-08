@@ -1,0 +1,46 @@
+---
+# Kyverno ClusterPolicy: forbid the `latest` image tag.
+#
+# Rationale: `latest` is not reproducible — the image a pod runs today may
+# differ from yesterday. The CD pipeline tags every image with a semver
+# (see .github/workflows/cd.yml), so app workloads always pass.
+#
+# Chart-managed namespaces are excluded (they pin their own versions).
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchExpressions:
+                  - key: kubernetes.io/metadata.name
+                    operator: NotIn
+                    values:
+                      - kube-system
+                      - argocd
+                      - kyverno
+                      - platform
+                      - cert-manager
+                      - ingress-nginx
+                      - external-dns
+                      - external-secrets
+                      - keda
+                      - observability
+      validate:
+        message: "Images must use an explicit tag — `latest` is not allowed."
+        foreach:
+          - list: "containers"
+            pattern:
+              image: "!*:latest"
+          - list: "initContainers"
+            pattern:
+              image: "!*:latest"

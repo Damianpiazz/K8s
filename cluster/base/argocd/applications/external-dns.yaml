@@ -1,0 +1,36 @@
+---
+# external-dns — syncs Ingress hostnames to Azure DNS.
+#
+# This Application uses a GIT PATH source (not a Helm chart) on purpose:
+# the plain manifests live in cluster/base/external-dns/external-dns-azure.yaml.
+# Using the Helm chart AND the plain manifest in the same cluster would create
+# two Deployments named "external-dns" in the same namespace and conflict.
+#
+# The helmfile.yaml alternative DOES use the official external-dns Helm chart
+# (version ~1.14.x) — pick ONE of the two paths, never both.
+#
+# Requirements to fill in:
+#   - azuredns.json placeholder Secret → real Azure DNS service principal
+#     (see cluster/base/external-dns/external-dns-azure.yaml)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/<org>/<repo>.git # REPLACE with your repository
+    targetRevision: main
+    path: cluster/base/external-dns
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

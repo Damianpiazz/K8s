@@ -1,0 +1,42 @@
+---
+# Example PrometheusRule — SLO-ish alerting for order-svc latency.
+#
+# DEPENDS on the order-svc exposing Actuator/Prometheus metrics:
+#   - Spring Boot Actuator (Micrometer) → http_server_requests_seconds_*
+#   - scraped via a ServiceMonitor labeled job="order-svc" (metrics route)
+#
+# The record rule pre-aggregates the 95th percentile so dashboards + alerts
+# share one expression instead of repeating it.
+#
+# Adjust `job="order-svc"` to your actual scrape job label; adjust the SLO
+# threshold (1s p95) to match your SLA.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: order-svc-slo
+  namespace: observability
+spec:
+  groups:
+    - name: order-svc-latency-slo
+      rules:
+        # Record rule: p95 latency of order-svc over the last 5 minutes.
+        - record: order_svc:http_server_requests_seconds:p95_5m
+          expr: >-
+            histogram_quantile(0.95,
+              sum(rate(http_server_requests_seconds_bucket{job="order-svc"}[5m]))
+              by (le))
+        # Alert: p95 above 1s for 5 consecutive minutes.
+        - alert: OrderServiceHighLatency
+          expr: >-
+            histogram_quantile(0.95,
+              sum(rate(http_server_requests_seconds_bucket{job="order-svc"}[5m]))
+              by (le)) > 1
+          for: 5m
+          labels:
+            severity: warning
+            team: ecommerce
+          annotations:
+            summary: "order-svc p95 latency above SLO"
+            description: >-
+              p95 latency of order-svc has been above 1s for more than 5
+              minutes. Current value: {{ $value }}s.

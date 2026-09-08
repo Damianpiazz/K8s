@@ -1,0 +1,122 @@
+---
+# Kustomize overlay — PRODUCTION environment.
+#
+# Extends cluster/base with production-specific configuration:
+#   - ClusterIssuer letsencrypt-default → Let's Encrypt PRODUCTION (real trusted certs)
+#   - ClusterSecretStore vault URL → Azure Key Vault for prod
+#   - ecommerce-env-config ConfigMap → production settings, secure defaults
+#
+# WARNING: the prod issuer hits the real ACME server. Make sure cert-manager
+# and DNS are fully functional before applying this overlay to avoid
+# rate-limit lockouts.
+#
+# Usage:
+#   kustomize build cluster/overlays/prod
+#
+# Argo CD: point an Application's spec.source.path to cluster/overlays/prod
+# to deploy the platform for the production environment.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  # Environment-specific ClusterIssuer (prod → production ACME, real trusted certs)
+  - issuer-default.yaml
+  # ConfigMap consumed by services via envFrom (Phase 5+)
+  - env-config.yaml
+  # ── Services (Phase 5 — core; prod uses each service's PROD overlay) ──
+  - ../../../services/config-service/k8s/overlays/prod
+  - ../../../services/discovery-service/k8s/overlays/prod
+  - ../../../services/api-gateway/k8s/overlays/prod
+  - ../../../services/auth/k8s/overlays/prod
+  - ../../../services/catalog-svc/k8s/overlays/prod
+  - ../../../services/cart-svc/k8s/overlays/prod
+  # ── Services (Phase 6 — business; prod uses each service's PROD overlay) ──
+  - ../../../services/checkout-svc/k8s/overlays/prod
+  - ../../../services/order-svc/k8s/overlays/prod
+  - ../../../services/payment-svc/k8s/overlays/prod
+  - ../../../services/notification-svc/k8s/overlays/prod
+  - ../../../services/bff-web/k8s/overlays/prod
+  # ── Services (Phase 7 — extra; prod uses each service's PROD overlay) ──
+  - ../../../services/search-svc/k8s/overlays/prod
+  - ../../../services/recommendation-svc/k8s/overlays/prod
+  - ../../../services/inventory-svc/k8s/overlays/prod
+  - ../../../services/shipping-svc/k8s/overlays/prod
+  - ../../../services/returns-svc/k8s/overlays/prod
+  - ../../../services/analytics-svc/k8s/overlays/prod
+  # ── Observability app layer (Phase 8) ──
+  - ../../../observability
+  # ── Security app layer (Phase 8) ──
+  - ../../../security
+
+patches:
+  # Patch the ClusterSecretStore vault URL to point at the prod Key Vault
+  - target:
+      kind: ClusterSecretStore
+      name: azure-keyvault
+    path: patches/secret-store-patch.yaml
+
+# Pod Security (PSA) labels — the security/pod-security COMPONENT patches the
+# Namespaces (owned by ../../base) with the PSA labels. Component patches apply
+# to THIS root build's accumulation, so the labels merge and land in the same
+# apply pass as the workloads.
+components:
+  - ../../../security/pod-security
+
+# ── Image tags ─────────────────────────────────────────────────────────────
+# Replace `acr` with your real ACR login server ONCE; CD rewrites newTag to the
+# commit SHA on push to main (contract with .github/workflows/cd.yml). Entries
+# for services added in later phases are pre-listed so CD keeps working.
+images:
+  - name: acr.azurecr.io/config-service
+    newName: acr.azurecr.io/config-service
+    newTag: latest
+  - name: acr.azurecr.io/discovery-service
+    newName: acr.azurecr.io/discovery-service
+    newTag: latest
+  - name: acr.azurecr.io/api-gateway
+    newName: acr.azurecr.io/api-gateway
+    newTag: latest
+  - name: acr.azurecr.io/auth
+    newName: acr.azurecr.io/auth
+    newTag: latest
+  - name: acr.azurecr.io/catalog-svc
+    newName: acr.azurecr.io/catalog-svc
+    newTag: latest
+  - name: acr.azurecr.io/cart-svc
+    newName: acr.azurecr.io/cart-svc
+    newTag: latest
+  # Phase 6/7 services (created when those phases land):
+  - name: acr.azurecr.io/checkout-svc
+    newName: acr.azurecr.io/checkout-svc
+    newTag: latest
+  - name: acr.azurecr.io/order-svc
+    newName: acr.azurecr.io/order-svc
+    newTag: latest
+  - name: acr.azurecr.io/payment-svc
+    newName: acr.azurecr.io/payment-svc
+    newTag: latest
+  - name: acr.azurecr.io/notification-svc
+    newName: acr.azurecr.io/notification-svc
+    newTag: latest
+  - name: acr.azurecr.io/search-svc
+    newName: acr.azurecr.io/search-svc
+    newTag: latest
+  - name: acr.azurecr.io/recommendation-svc
+    newName: acr.azurecr.io/recommendation-svc
+    newTag: latest
+  - name: acr.azurecr.io/inventory-svc
+    newName: acr.azurecr.io/inventory-svc
+    newTag: latest
+  - name: acr.azurecr.io/shipping-svc
+    newName: acr.azurecr.io/shipping-svc
+    newTag: latest
+  - name: acr.azurecr.io/returns-svc
+    newName: acr.azurecr.io/returns-svc
+    newTag: latest
+  - name: acr.azurecr.io/analytics-svc
+    newName: acr.azurecr.io/analytics-svc
+    newTag: latest
+  - name: acr.azurecr.io/bff-web
+    newName: acr.azurecr.io/bff-web
+    newTag: latest

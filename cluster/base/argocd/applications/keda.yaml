@@ -1,0 +1,32 @@
+---
+# KEDA — event-driven autoscaling (ScaledObject CRDs).
+#
+# The ScaledObject example in cluster/base/keda/scaledobject-example.yaml
+# depends on the KEDA CRDs installed by this chart.
+#
+# Requirements to fill in:
+#   - Helm chart version: "bump me" — check https://github.com/kedacore/keda/releases
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keda
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    chart: keda
+    repoURL: https://kedacore.github.io/charts
+    targetRevision: 2.15.1 # bump me: verify latest stable chart version
+    helm:
+      releaseName: keda
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keda
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

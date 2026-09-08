@@ -1,0 +1,24 @@
+---
+# ClusterIssuer: letsencrypt-default (STAGING → staging ACME).
+#
+# Staging uses the Let's Encrypt staging server to validate the certificate
+# issuance flow end-to-end before promoting to prod. Certificates are signed
+# by an untrusted CA — this is expected and confirms cert-manager works.
+#
+# Services reference this issuer via the annotation:
+#   cert-manager.io/cluster-issuer: letsencrypt-default
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-default
+spec:
+  acme:
+    # Staging ACME — validate cert flow without prod rate limits
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@ecommerce.staging # REPLACE with your email
+    privateKeySecretRef:
+      name: letsencrypt-default-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

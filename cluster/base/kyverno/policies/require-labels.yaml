@@ -1,0 +1,46 @@
+---
+# Kyverno ClusterPolicy: require app + env labels on workloads.
+#
+# Scope: every Pod in namespaces EXCLUDED below must carry the labels
+#   app: <name>   and   env: <production|platform|...>
+# Chart-managed namespaces are excluded (Helm charts set
+# app.kubernetes.io/name, not the plain `app` label).
+#
+# Mode: Enforce. If this blocks a legitimate workload, add an `exclude` block
+# instead of weakening the policy.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: require-app-env-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaceSelector:
+                matchExpressions:
+                  - key: kubernetes.io/metadata.name
+                    operator: NotIn
+                    values:
+                      - kube-system
+                      - argocd
+                      - kyverno
+                      - platform
+                      - cert-manager
+                      - ingress-nginx
+                      - external-dns
+                      - external-secrets
+                      - keda
+                      - observability
+      validate:
+        message: "Every pod must define the labels `app` and `env`."
+        pattern:
+          metadata:
+            labels:
+              app: "?*"
+              env: "?*"

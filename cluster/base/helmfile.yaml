@@ -1,0 +1,115 @@
+---
+# ALTERNATIVE bootstrap — helmfile (non-GitOps).
+#
+# This is the documentation-grade fallback for people who do NOT want Argo CD
+# (or who want to compare). It installs the SAME components as the Argo CD
+# Applications in cluster/base/argocd/applications/, plus Argo CD itself.
+#
+# Usage:
+#   helmfile apply
+#
+# Requirements:
+#   - helm + helmfile installed locally
+#   - kubectl context pointing at the AKS cluster
+#   - CRD-backed resources from cluster/base (ClusterIssuer, policies, ...)
+#     are NOT applied by helmfile — run `kubectl apply -k cluster/base`
+#     afterwards (skipping the Applications is fine; they are Argo CD CRs).
+#
+# Version numbers mirror the Argo CD Applications — keep them in sync.
+repositories:
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: external-dns
+    url: https://kubernetes-sigs.github.io/external-dns/
+  - name: external-secrets
+    url: https://charts.external-secrets.io
+  - name: kyverno
+    url: https://kyverno.github.io/kyverno/
+  - name: kedacore
+    url: https://kedacore.github.io/charts
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+
+releases:
+  - name: argocd
+    namespace: argocd
+    createNamespace: true
+    chart: argo/argo-cd
+    version: 7.4.0 # bump me: verify latest stable chart version
+    wait: true
+    timeout: 600
+
+  - name: ingress-nginx
+    namespace: ingress-nginx
+    createNamespace: true
+    chart: ingress-nginx/ingress-nginx
+    version: 4.11.3 # bump me
+    values: [./ingress-nginx/values.yaml]
+    wait: true
+    timeout: 600
+
+  - name: cert-manager
+    namespace: cert-manager
+    createNamespace: true
+    chart: jetstack/cert-manager
+    version: v1.15.3 # bump me
+    wait: true
+    timeout: 600
+
+  - name: external-dns
+    namespace: external-dns
+    createNamespace: true
+    chart: external-dns/external-dns
+    version: 1.14.5 # bump me
+    values:
+      # Azure provider — mirror of cluster/base/external-dns/external-dns-azure.yaml.
+      # Do NOT run both this release AND the git-path Application at once.
+      provider: azure
+      azure:
+        resourceGroup: <dns-zone-resource-group>
+        tenantId: AZURE_TENANT_ID
+        subscriptionId: <subscription-id>
+        secretName: azure-config-file
+      domainFilters: [<domain>]
+      policy: upsert
+      txtOwnerId: ecommerce-k8s
+      registry: txt
+    wait: true
+    timeout: 600
+
+  - name: external-secrets
+    namespace: external-secrets
+    createNamespace: true
+    chart: external-secrets/external-secrets
+    version: 0.10.5 # bump me
+    wait: true
+    timeout: 600
+
+  - name: kyverno
+    namespace: kyverno
+    createNamespace: true
+    chart: kyverno/kyverno
+    version: 3.2.6 # bump me
+    wait: true
+    timeout: 600
+
+  - name: keda
+    namespace: keda
+    createNamespace: true
+    chart: kedacore/keda
+    version: 2.15.1 # bump me
+    wait: true
+    timeout: 600
+
+  - name: kube-prometheus-stack
+    namespace: observability
+    createNamespace: true
+    chart: prometheus-community/kube-prometheus-stack
+    version: 61.9.0 # bump me
+    values: [./monitoring/kube-prometheus-stack/values.yaml]
+    wait: true
+    timeout: 600

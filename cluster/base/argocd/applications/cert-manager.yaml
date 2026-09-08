@@ -1,0 +1,40 @@
+---
+# cert-manager — X.509 certificate management (ClusterIssuer CRDs).
+#
+# The chart installs the cert-manager CRDs (ClusterIssuer, Certificate, ...)
+# which the cluster-scoped resources in cluster/base/cert-manager depend on.
+# Sync wave < 0 guarantees the CRDs arrive before kubectl applies
+# cluster-issuer.yaml during bootstrap (see README bootstrap order).
+#
+# Requirements to fill in:
+#   - Helm chart version: "bump me" — check https://github.com/cert-manager/cert-manager/releases
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    chart: cert-manager
+    repoURL: https://charts.jetstack.io
+    targetRevision: v1.15.3 # bump me: verify latest stable chart version
+    helm:
+      releaseName: cert-manager
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  # CRDs used by cluster/base/cert-manager/cluster-issuer.yaml must exist first.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jqPathExpressions:
+        - .spec.conversion.webhook.clientConfig.caBundle

@@ -1,0 +1,44 @@
+---
+# kube-prometheus-stack — Prometheus + Alertmanager + Grafana + exporters.
+#
+# Multi-source Application:
+#   source 1: the official kube-prometheus-stack Helm chart.
+#   source 2: this repository (ref: values) — provides
+#             cluster/base/monitoring/kube-prometheus-stack/values.yaml
+#             referenced via $values/... in the helm valueFiles.
+#
+# The PrometheusRule in cluster/base/monitoring/dashboard-example.yaml and the
+# ServiceMonitors emitted by the services (Phase 4+) are picked up because the
+# values.yaml opens the Prometheus selectors (see that file for details).
+#
+# Requirements to fill in:
+#   - Helm chart version: "bump me" — check https://github.com/prometheus-community/helm-charts/releases
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - chart: kube-prometheus-stack
+      repoURL: https://prometheus-community.github.io/helm-charts
+      targetRevision: 61.9.0 # bump me: verify latest stable chart version
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/cluster/base/monitoring/kube-prometheus-stack/values.yaml
+    - repoURL: https://github.com/<org>/<repo>.git # REPLACE with your repository
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

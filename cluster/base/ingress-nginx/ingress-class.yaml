@@ -1,0 +1,15 @@
+---
+# Default ingress class for the cluster.
+#
+# The ingress-nginx chart is installed with ingressClassResource disabled
+# (see values.yaml) — this manifest is the single source of truth for the
+# "nginx" class, and it is marked as the cluster default so Ingress objects
+# WITHOUT an explicit ingressClassName still route through nginx.
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: nginx
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: k8s.io/ingress-nginx

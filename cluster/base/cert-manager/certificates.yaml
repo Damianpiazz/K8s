@@ -1,0 +1,45 @@
+---
+# EXAMPLE wildcard certificate — intentionally commented out.
+#
+# This file is a reference only; it is NOT listed in cluster/base/kustomization.yaml
+# (a fully commented YAML file would break `kustomize build`). When you have:
+#   - a real domain (<domain>), and
+#   - external-dns syncing your records to Azure DNS, and
+#   - decided between HTTP-01 (single hostnames) vs DNS-01 (wildcards),
+# uncomment the manifest below, adjust the values, and add this file to the
+# resources list in the top-level kustomization.yaml.
+#
+# NOTE: wildcard certificates require the DNS-01 solver (Azure DNS provider)
+# because HTTP-01 cannot issue for *.example.com. The ClusterIssuers in
+# cluster-issuer.yaml currently use http01 — switch them to dns01/azuredns
+# (Azure workload identity) before requesting the wildcard.
+#
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: Certificate
+# metadata:
+#   name: wildcard-apps
+#   namespace: ecommerce
+# spec:
+#   secretName: wildcard-apps-tls
+#   issuerRef:
+#     name: letsencrypt-prod
+#     kind: ClusterIssuer
+#   dnsNames:
+#     - '*.apps.<domain>'        # REPLACE with your real domain
+#     - 'apps.<domain>'          # apex hostname, optional
+#
+# Example single-hostname certificate (HTTP-01, works with current issuers):
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: Certificate
+# metadata:
+#   name: api-ecommerce-tls
+#   namespace: ecommerce
+# spec:
+#   secretName: api-ecommerce-tls
+#   issuerRef:
+#     name: letsencrypt-prod
+#     kind: ClusterIssuer
+#   dnsNames:
+#     - api.ecommerce.<domain>  # REPLACE with your real domain

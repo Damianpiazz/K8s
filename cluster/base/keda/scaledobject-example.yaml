@@ -1,0 +1,55 @@
+---
+# KEDA ScaledObject example — autoscale the order-worker from Event Hubs.
+#
+# The order-worker consumes "order-events" (created in Phase 2 as Event Hubs,
+# Kafka-compatible endpoint). The trigger below uses KEDA's `kafka` scaler
+# against the Event Hubs Kafka endpoint:
+#
+#   brokers:  <event-hubs-ns>.servicebus.windows.net:9093
+#   topic:    order-events
+#
+# Alternative scaler: KEDA `azure-eventhub` (native Event Hubs protocol +
+# checkpoint storage in a blob container). Pick ONE — delete the other.
+#
+# IMPORTANT: the $VAR syntax inside metadata resolves values from the
+# order-worker Deployment's OWN pod environment variables. The deployment
+# must export SASL credentials, e.g.:
+#
+#   env:
+#     - name: EVENT_HUBS_SASL_USERNAME
+#       valueFrom: { secretKeyRef: { name: event-hubs-credentials, key: sasl-username } }
+#     - name: EVENT_HUBS_SASL_PASSWORD
+#       valueFrom: { secretKeyRef: { name: event-hubs-credentials, key: sasl-password } }
+#
+# Requirements to fill in:
+#   <event-hubs-ns> → the Event Hubs namespace created by infra/terraform
+#   EVENT_HUBS_SASL_USERNAME / EVENT_HUBS_SASL_PASSWORD → env names above
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-worker
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    name: order-worker # Deployment name in namespace ecommerce
+  pollingInterval: 30        # check the queue every 30s
+  cooldownPeriod: 300        # wait 5 min of inactivity before scaling down
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+  triggers:
+    - type: kafka
+      metadata:
+        topic: order-events
+        brokers: <event-hubs-ns>.servicebus.windows.net:9093 # REPLACE
+        consumerGroup: order-worker
+        lagThreshold: "10"     # scale when the consumer lags 10+ messages
+        sasl: plaintext
+        saslUsername: $EVENT_HUBS_SASL_USERNAME  # must exist in the deployment env
+        saslPassword: $EVENT_HUBS_SASL_PASSWORD  # must exist in the deployment env
+        tls: enable            # Event Hubs Kafka endpoint requires TLS
+        version: 2.0.0         # Kafka protocol version spoken by Event Hubs

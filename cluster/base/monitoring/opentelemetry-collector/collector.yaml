@@ -1,0 +1,119 @@
+---
+# OpenTelemetry Collector — plain manifests (no Helm chart on purpose).
+#
+# Services (Phase 4+) send OTLP to the collector; the collector exports:
+#   - metrics → Prometheus exporter (scraped by kube-prometheus-stack at :8889)
+#   - traces  → otlphttp placeholder for Tempo (deploy Tempo later, or route
+#               to Azure Monitor / Zipkin by uncommenting the alternative export)
+#
+# Requirements to fill in: nothing at install time. Tempo/Zipkin endpoint is
+# a placeholder until the traces backend exists (observability/ Phase 5+).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: observability
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    exporters:
+      # Metrics: expose /metrics on :8889 — Prometheus scrapes this endpoint.
+      prometheus:
+        endpoint: 0.0.0.0:8889
+
+      # Traces placeholder A (recommended): OTLP/HTTP into Tempo.
+      # Deploy Tempo (observability/, Phase 5+), then enable this exporter.
+      otlphttp/tempo:
+        endpoint: http://tempo.observability.svc.cluster.local:4318
+
+      # Traces placeholder B: Zipkin-compatible receiver (e.g. Azure Monitor).
+      # zipkin:
+      #   endpoint: http://<zipkin-host>:9411/api/v2/spans
+
+      # Debug aid — write everything to stdout (disable in prod):
+      # debug:
+      #   verbosity: basic
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          exporters: [prometheus]
+        traces:
+          receivers: [otlp]
+          exporters: [otlphttp/tempo]
+          # switch to [zipkin] if you use the Zipkin exporter instead
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: otel-collector
+    spec:
+      serviceAccountName: otel-collector
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.112.0 # bump me: verify latest
+          args:
+            - --config=/etc/otel-collector-config/otel-collector-config.yaml
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+            - name: prom-metrics
+              containerPort: 8889
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel-collector-config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector
+  namespace: observability
+---
+# Let Prometheus scrape the collector's OWN metrics (from the prometheus
+# exporter on :8889). The stack's open serviceMonitorSelector (values.yaml)
+# picks this up automatically.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector
+  namespace: observability
+spec:
+  endpoints:
+    - port: prom-metrics
+      path: /metrics
+      interval: 15s
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector

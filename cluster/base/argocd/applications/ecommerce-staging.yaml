@@ -1,0 +1,31 @@
+---
+# ecommerce-staging — deploys the STAGING overlay (services + platform
+# resources).
+#
+# This is the Application synced by the cd.yml GITOPS == 'argocd' path:
+#   app-name: ecommerce-${{ inputs.environment || 'prod' }}
+# Deploys cluster/overlays/staging, which includes cluster/base (namespaces,
+# platform CRs), the service manifests and the observability/security layers.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # REPLACE with your repository (same repo where this file lives).
+    repoURL: https://github.com/<org>/<repo>.git
+    targetRevision: main
+    path: cluster/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

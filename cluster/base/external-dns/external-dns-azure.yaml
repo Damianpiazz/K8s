@@ -1,0 +1,114 @@
+---
+# external-dns — syncs Kubernetes Ingress/Service hostnames to Azure DNS.
+#
+# Plain-manifest deployment (no Helm chart) that mirrors the official
+# external-dns chart's values (provider: azure + azuredns.json secret).
+# Syncs only Ingress sources filtered to <domain> — adjust to taste.
+#
+# Requirements to fill in:
+#   <domain>                → the DNS zone external-dns is allowed to manage
+#   azure-config-file       → the Secret below: replace the placeholder JSON
+#                             with a real service principal authorized on
+#                             your Azure DNS zone (Azure DNS Contributor).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: external-dns
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints", "pods", "services"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+  - kind: ServiceAccount
+    name: external-dns
+    namespace: external-dns
+---
+# Azure credentials for the Azure DNS provider. PLACEHOLDER — replace with a
+# real service principal:
+#   az ad sp create-for-rbac --name external-dns --role "DNS Zone Contributor"
+# then base64-encode the JSON and put it here. Keep this file out of public
+# repos in real environments (external-secrets is the production path).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-config-file
+  namespace: external-dns
+type: Opaque
+stringData:
+  azure.json: |
+    {
+      "tenantId": "AZURE_TENANT_ID",
+      "subscriptionId": "<subscription-id>",
+      "resourceGroup": "<dns-zone-resource-group>",
+      "aadClientId": "<service-principal-client-id>",
+      "aadClientSecret": "<service-principal-client-secret>"
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: external-dns
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-dns
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+        - name: external-dns
+          image: registry.k8s.io/external-dns/external-dns:v0.14.2 # bump me: verify latest
+          args:
+            - --provider=azure
+            - --source=ingress
+            - --domain-filter=<domain> # REPLACE: only manage this zone
+            - --policy=upsert          # create+update records, never delete
+            - --registry=txt           # TXT registry — required to avoid ownership conflicts
+            - --txt-owner-id=ecommerce-k8s
+            - --log-level=info
+          env:
+            - name: AZURE_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: azure-config-file
+                  key: azure.json
+          volumeMounts:
+            - name: azure-config
+              mountPath: /etc/kubernetes
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: azure-config
+          secret:
+            secretName: azure-config-file

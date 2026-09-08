@@ -1,0 +1,38 @@
+---
+# Argo CD app-of-apps — root Application.
+#
+# This is the single source of truth for the platform components. Applying it
+# makes Argo CD reconcile every child Application under
+# cluster/base/argocd/applications/ (automated sync + prune + self-heal).
+#
+# Bootstrap order (see README.md):
+#   1. kubectl apply -k cluster/base/argocd/install      # Argo CD itself
+#   2. kubectl apply -f cluster/base/argocd/app-of-apps.yaml
+#   3. kubectl apply -f cluster/base/argocd/applications/
+#   4. kubectl apply -k cluster/base                      # remaining cluster-scoped resources
+#
+# Step 2+3 can be replaced by step 4 alone: the top-level kustomization also
+# includes these Application CRs, so the root adopts the children after apply.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # REPLACE with your repository (same repo where this file lives).
+    repoURL: https://github.com/<org>/<repo>.git
+    targetRevision: main
+    path: cluster/base/argocd/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

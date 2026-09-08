@@ -1,0 +1,69 @@
+---
+# Top-level kustomization for cluster/base — the GitOps bootstrap.
+#
+# What this applies:
+#   - the 6 platform namespaces
+#   - the Argo CD app-of-apps (root Application) + the 10 child Applications
+#   - cluster-scoped/platform resources that ARGuments the child apps deploy
+#     (ClusterIssuer, IngressClass, ClusterSecretStore, Kyverno ClusterPolicies,
+#     KEDA ScaledObject example, PrometheusRule example, OTel collector)
+#
+# What this DOES NOT include (and why):
+#   - argocd/install/          → remote kustomize base, applied FIRST, manually
+#                                (see README bootstrap order)
+#   - argocd/namespace.yaml    → the argocd Namespace already comes from
+#                                namespaces/namespaces.yaml (would be a duplicate)
+#   - cert-manager/certificates.yaml → commented-out example only; add it to this
+#                                list once you uncomment a real Certificate
+#   - ingress-nginx/values.yaml, monitoring/kube-prometheus-stack/values.yaml
+#                                → Helm values consumed by Argo CD multi-source /
+#                                helmfile — not Kubernetes resources
+#
+# Duplicate kind+name audit: none within this kustomization.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # ── Namespaces ──────────────────────────────────────────────────────────
+  - namespaces/namespaces.yaml
+
+  # ── Argo CD Applications (root + children) ──────────────────────────────
+  - argocd/app-of-apps.yaml
+  - argocd/applications/ingress-nginx.yaml
+  - argocd/applications/cert-manager.yaml
+  - argocd/applications/external-dns.yaml
+  - argocd/applications/external-secrets.yaml
+  - argocd/applications/kyverno.yaml
+  - argocd/applications/keda.yaml
+  - argocd/applications/kube-prometheus-stack.yaml
+  # Environment Applications — synced by cd.yml (GITOPS == 'argocd',
+  # app-name: ecommerce-<env>); each deploys its overlay.
+  - argocd/applications/ecommerce-dev.yaml
+  - argocd/applications/ecommerce-staging.yaml
+  - argocd/applications/ecommerce-prod.yaml
+
+  # ── cert-manager (CRDs installed by the cert-manager Application) ───────
+  - cert-manager/cluster-issuer.yaml
+
+  # ── ingress-nginx (controller installed by the chart; class resource here)
+  - ingress-nginx/ingress-class.yaml
+
+  # ── external-dns (plain manifests, applied via the git-path Application) ─
+  - external-dns/external-dns-azure.yaml
+
+  # ── external-secrets (CRDs installed by the Application) ────────────────
+  - external-secrets/cluster-secret-store.yaml
+  - external-secrets/example-external-secret.yaml
+
+  # ── Kyverno policies (CRDs installed by the Application) ────────────────
+  - kyverno/policies/require-labels.yaml
+  - kyverno/policies/require-resources.yaml
+  - kyverno/policies/disallow-latest-tag.yaml
+
+  # ── KEDA example (CRDs installed by the Application) ────────────────────
+  - keda/scaledobject-example.yaml
+
+  # ── Monitoring (stack installed by the Application; these are plain) ────
+  - monitoring/opentelemetry-collector/collector.yaml
+  - monitoring/opentelemetry-collector/service.yaml
+  - monitoring/dashboard-example.yaml

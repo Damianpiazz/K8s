@@ -1,0 +1,49 @@
+---
+# ClusterIssuers — certificate authorities for the whole cluster.
+#
+#   selfsigned       → dev/test issuers, no external dependency
+#   letsencrypt      → public TLD certificates (staging + prod)
+#
+# Requirements to fill in:
+#   <email> → the ACME account contact (Let's Encrypt requires a valid email)
+#
+# Both Let's Encrypt issuers solve HTTP-01 through the nginx IngressClass.
+# Swap the solver to dns01/azuredns if you need wildcard certificates
+# (see certificates.yaml for the wildcard example).
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    # acme-staging has a much higher rate limit — use it for testing.
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: <email> # REPLACE with your email address
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: <email> # REPLACE with your email address
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

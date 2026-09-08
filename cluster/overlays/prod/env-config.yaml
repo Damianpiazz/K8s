@@ -1,0 +1,32 @@
+---
+# Per-environment ConfigMap — PRODUCTION.
+#
+# Secure defaults: INFO logging, no debug features, no mock data.
+# Values reflect Azure-managed resources created by infra/terraform (Phase 2).
+# Replace placeholder FQDNs with actual terraform outputs.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-env-config
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    env: prod
+data:
+  ENVIRONMENT: prod
+  LOG_LEVEL: INFO
+
+  # ── Data connections (Azure-managed, replace with terraform outputs) ────
+  DB_HOST: pg-prod-ecommerce.postgres.database.azure.com
+  DB_PORT: "5432"
+  DB_NAME: ecommerce
+  REDIS_HOST: redis-prod-ecommerce.redis.cache.windows.net
+  REDIS_PORT: "6380"
+
+  # ── Messaging (Azure Event Hubs Kafka endpoint) ────────────────────────
+  KAFKA_BOOTSTRAP: ns-prod-ecommerce.servicebus.windows.net:9093
+  KAFKA_SECURITY_PROTOCOL: SASL_SSL
+
+  # ── Feature flags (prod: everything disabled) ──────────────────────────
+  ENABLE_SWAGGER: "false"
+  ENABLE_MOCK_DATA: "false"

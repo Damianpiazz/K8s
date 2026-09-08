@@ -1,0 +1,39 @@
+---
+# Argo CD bootstrap — one-time manual install.
+#
+# This kustomization is NOT referenced by cluster/base/kustomization.yaml.
+# Run it ONCE on a fresh cluster, BEFORE applying the app-of-apps:
+#
+#   kubectl apply -k cluster/base/argocd/install
+#
+# It pulls the official Argo CD manifests (namespace, CRDs, controllers)
+# from a remote kustomize base.
+#
+# NOTE: remote kustomize bases are deprecated in kustomize v5 — if your
+# kubectl/kustomize rejects the remote ref, fall back to the official
+# installer (same content, no kustomize needed):
+#
+#   kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.3/manifests/install.yaml
+#
+# After Argo CD is healthy, bootstrap the applications:
+#
+#   kubectl apply -k cluster/base   # see README.md for the full order
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Official Argo CD manifests (cluster-install variant, no HA — fine for dev).
+  - https://github.com/argoproj/argo-cd.git/manifests/cluster-install?ref=v2.12.3
+
+patches:
+  # Optional: expose Argo CD server on its own NodePort/LoadBalancer via
+  # service type override. Comment out if you manage access via port-forward:
+  #   kubectl port-forward -n argocd svc/argocd-server 8080:443
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: argocd-server
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --insecure
