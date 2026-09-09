@@ -12,7 +12,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
-  - admin-credentials.yaml   # placeholder Secret — gitignored (**/admin-credentials.yaml); real source: Azure Key Vault via external-secret.yaml
+  - admin-credentials.yaml   # placeholder Secret for local/dev — real source: Azure Key Vault via external-secret.yaml
   - external-secret.yaml
   - hpa.yaml
   - pdb.yaml

@@ -61,6 +61,3 @@ Desktop.ini
 # ─── Secrets (never commit) ───
 **/secret.yaml
 **/secrets.yaml
-# Placeholder credential manifests (e.g. services/*/k8s/base/admin-credentials.yaml —
-# real credentials come from external-secrets / Azure Key Vault).
-**/admin-credentials.yaml
