@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
 
         return chain.filter(exchange).doFinally(signalType -> {
             ServerHttpResponse response = exchange.getResponse();
-            HttpStatus status = response.getStatusCode();
+            HttpStatusCode status = response.getStatusCode();
             log.info("{} {} -> {} ({} ms, {})",
                     request.getMethod(),
                     request.getURI().getPath(),
