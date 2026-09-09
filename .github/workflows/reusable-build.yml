@@ -27,6 +27,11 @@ on:
         required: false
         type: boolean
         default: false
+      acr_name:
+        description: "ACR registry name (e.g. myacr). Overrides vars.ACR_NAME."
+        required: false
+        type: string
+        default: ""
     secrets:
       AZURE_CREDENTIALS:
         description: "Azure service principal JSON"
@@ -43,7 +48,7 @@ on:
         value: ${{ jobs.build.outputs.image }}
 
 env:
-  ACR_NAME: ${{ vars.ACR_NAME }}
+  ACR_NAME: ${{ inputs.acr_name || vars.ACR_NAME }}
 
 jobs:
   build:
@@ -54,6 +59,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate ACR registry name
+        run: |
+          if [ -z "${{ env.ACR_NAME }}" ]; then
+            echo "::error::ACR_NAME is empty. Set the ACR_NAME repository variable or pass the acr_name input (e.g. 'myacr')."
+            exit 1
+          fi
 
       - name: Azure login
         uses: azure/login@v2

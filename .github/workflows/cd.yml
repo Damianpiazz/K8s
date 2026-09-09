@@ -65,6 +65,7 @@ jobs:
       service: ${{ matrix.service }}
       context: services/${{ matrix.service }}
       push: true
+      acr_name: ${{ vars.ACR_NAME }}
     secrets:
       AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
       ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
