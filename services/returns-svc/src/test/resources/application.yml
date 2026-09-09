@@ -3,6 +3,12 @@ eureka:
   client:
     enabled: false
 
+spring:
+  cloud:
+    config:
+      import-check:
+        enabled: false
+
 returns:
   auto-approvable-reasons: defective,wrong-item,not-as-described
   return-window-days: 30

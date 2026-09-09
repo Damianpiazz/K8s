@@ -3,6 +3,12 @@ eureka:
   client:
     enabled: false
 
+spring:
+  cloud:
+    config:
+      import-check:
+        enabled: false
+
 checkout:
   cart:
     # Unreachable port guarantees the mock-cart fallback path in tests.
