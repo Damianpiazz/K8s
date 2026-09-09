@@ -51,7 +51,7 @@ public class BffService {
     public Mono<HomeResponse> home() {
         return fetchProducts()
                 .map(this::toHomePage)
-                .onErrorReturn(HomeResponse.degraded());
+                .onErrorReturn(HomeResponse.degradedResponse());
     }
 
     /** Cart joined with product info. Degrades on cart failure; per-item lookups degrade individually. */

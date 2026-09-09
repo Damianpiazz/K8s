@@ -12,7 +12,7 @@ import java.util.List;
  */
 public record HomeResponse(List<ProductSummary> products, ProductSummary hero, boolean degraded) {
 
-    public static HomeResponse degraded() {
+    public static HomeResponse degradedResponse() {
         return new HomeResponse(List.of(), null, true);
     }
 }
