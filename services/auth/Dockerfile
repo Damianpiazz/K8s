@@ -22,7 +22,7 @@
 #   Keep at least 2 replicas; HA needs the distributed cache (JGroups), so a
 #   StatefulSet or the Keycloak Operator is the real production path.
 
-FROM quay.io/keycloak/keycloak:24.0.10
+FROM quay.io/keycloak/keycloak:24.0.5
 
 USER root
 COPY src/realm-export.json /opt/keycloak/data/import/realm-export.json
