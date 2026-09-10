@@ -33,18 +33,25 @@ class SearchServiceApplicationTests {
         assertThat(response.getBody()).isNotEmpty();
 
         Map<String, Object> first = (Map<String, Object>) response.getBody().get(0);
-        // Name match = 3 → the K87 outranks any description/tag-only hit.
+        // Per the documented rule (docs/casos-de-uso/sistema-ecommerce.md)
+        // weights are additive per matching field: name = 3, description = 1,
+        // tag = 1. The K87 matches name ("keyboard") AND tag ("keyboard"), so
+        // the top hit legitimately scores 4.0 — not 3.0.
         assertThat(first.get("name").toString()).containsIgnoringCase("keyboard");
-        assertThat(((Number) first.get("score")).doubleValue()).isEqualTo(3.0);
+        assertThat(((Number) first.get("score")).doubleValue()).isEqualTo(4.0);
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void categoryFilterRestrictsResults() {
         ResponseEntity<List> response = rest.getForEntity(
-                "/api/search?q=hd&category=Audio", List.class);
+                "/api/search?q=noise&category=Audio", List.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        // "hd" only matches a description/tag of the headset in Audio.
+        // "noise" only matches the headset in Audio (description "active noise
+        // cancelling" + tag "noise-cancelling"), so the filter must return
+        // exactly that hit and nothing from other categories. (The previous
+        // query "hd" matched nothing in Audio — the headset has no "hd"
+        // substring — so the result was legitimately empty.)
         assertThat(response.getBody()).isNotEmpty();
         for (Object hit : response.getBody()) {
             Map<String, Object> item = (Map<String, Object>) hit;

@@ -27,12 +27,24 @@ class CatalogServiceApplicationTests {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void seededProductsAreListed() {
         ResponseEntity<List> response =
                 rest.getForEntity("/api/catalog/products", List.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).hasSize(4); // DataSeeder
+        // The 4 DataSeeder products are always present. The list may also
+        // contain the product created by createThenGetProductRoundTrips
+        // (shared H2 context + unspecified JUnit method order), so assert
+        // presence of the seeds instead of an absolute size.
+        List<Map<String, Object>> products = (List<Map<String, Object>>) response.getBody();
+        assertThat(products)
+                .extracting(p -> p.get("name"))
+                .contains(
+                        "Wireless Mouse MX-10",
+                        "Mechanical Keyboard K87",
+                        "27\" IPS Monitor",
+                        "USB-C Docking Station");
     }
 
     @Test

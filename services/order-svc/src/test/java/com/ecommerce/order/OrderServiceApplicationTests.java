@@ -27,10 +27,18 @@ class OrderServiceApplicationTests {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void seededOrdersAreListed() {
         ResponseEntity<List> response = rest.getForEntity("/api/orders", List.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).hasSize(2); // DataSeeder
+        // The 2 DataSeeder orders are always present. The list may also
+        // contain the order created by createThenGetOrderRoundTrips (shared
+        // H2 context + unspecified JUnit method order), so assert presence
+        // of the seeded customers instead of an absolute size.
+        List<Map<String, Object>> orders = (List<Map<String, Object>>) response.getBody();
+        assertThat(orders)
+                .extracting(o -> o.get("customerId"))
+                .contains("cust-42", "cust-7");
     }
 
     @Test
