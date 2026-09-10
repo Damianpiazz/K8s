@@ -22,8 +22,8 @@ flowchart LR
     API["kube-apiserver"] -->|"watch: Pods pending"| SCH["kube-scheduler"]
     SCH -->|"filtro (feasibility)"| FEAS["Nodos candidatos"]
     FEAS -->|"puntuación (scoring)"| BEST["Mejor nodo"]
-    BEST -->|"bind"| API2["kube-apiserver"]
-    API2 -->|"asignación"| KUBELET["kubelet del nodo"]
+    BEST -->|"bind"| API
+    API -->|"asignación"| KUBELET["kubelet del nodo"]
 ```
 
 ## Fases del scheduling

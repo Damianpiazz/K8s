@@ -31,7 +31,7 @@ flowchart TB
     DEP --> HPA["HPA (escala según métricas)"]
     DEP --> PVC["PVC: caché de modelo"]
     DEP --> SEC["Secret: HF token"]
-    NODES["Nodos con GPU (nodeSelector)"]
+    DEP -.->|"nodeSelector"| NODES["Nodos con GPU"]
 ```
 
 ## Ejemplo real 1: Inferencia de LLM con vLLM (kubernetes/examples)
