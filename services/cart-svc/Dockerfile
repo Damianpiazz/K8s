@@ -10,7 +10,7 @@ RUN mvn -B clean package -DskipTests
 # Runtime stage — Temurin JRE 17 (smaller, no compiler needed)
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-RUN useradd --system --uid 1000 appuser
+RUN useradd --system --uid 10001 appuser
 COPY --from=build /workspace/target/cart-svc-*.jar app.jar
 USER appuser
 EXPOSE 8082
