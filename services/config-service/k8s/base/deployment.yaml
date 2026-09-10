@@ -60,7 +60,7 @@ spec:
           # Spring writes /tmp (embedded Tomcat, JFR) — keep the fs writable.
           securityContext:
             runAsNonRoot: true
-            runAsUser: 1000
+            runAsUser: 10001
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
             seccompProfile:
