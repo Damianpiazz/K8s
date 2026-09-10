@@ -32,8 +32,6 @@ WORKDIR /app
 COPY --from=build /workspace/.next/standalone ./
 # Copy static assets into the standalone directory.
 COPY --from=build /workspace/.next/static ./.next/static
-# Copy public assets.
-COPY --from=build /workspace/public ./public
 
 # Use the built-in node user (UID 1000) already present in node:22-alpine.
 USER node
