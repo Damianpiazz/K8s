@@ -1,21 +1,21 @@
-# cart-svc — Shopping cart REST API
+# cart-svc — API REST de carrito de compras
 
-Per-session carts. The store is an in-memory `ConcurrentHashMap` for the demo —
-production should use Redis (Azure Cache for Redis), see below.
+Carritos por sesión. El store es un `ConcurrentHashMap` en memoria para la
+demo — producción debería usar Redis (Azure Cache for Redis), ver abajo.
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| GET | `/api/cart/{cartId}` | full cart (items + computed total) |
-| POST | `/api/cart/{cartId}/items` | add/merge line — body `{"productId": 1, "quantity": 2, "unitPrice": 29.99}` |
-| DELETE | `/api/cart/{cartId}/items/{productId}` | remove line (204; 404 if absent) |
+| GET | `/api/cart/{cartId}` | carrito completo (items + total calculado) |
+| POST | `/api/cart/{cartId}/items` | agrega/mergea línea — body `{"productId": 1, "quantity": 2, "unitPrice": 29.99}` |
+| DELETE | `/api/cart/{cartId}/items/{productId}` | elimina línea (204; 404 si no existe) |
 | GET | `/api/cart/{cartId}/total` | `{"cartId", "total", "itemCount"}` |
 
-`cartId` is the session identifier (any string); the api-gateway forwards
-`/api/cart/**` untouched.
+`cartId` es el identificador de sesión (cualquier string); el api-gateway
+reenvía `/api/cart/**` sin tocar.
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/cart-svc
@@ -30,25 +30,26 @@ curl -X POST localhost:8082/api/cart/session-1/items \
 curl localhost:8082/api/cart/session-1/total
 ```
 
-## Production store: Redis
+## Store de producción: Redis
 
-1. Uncomment `spring-boot-starter-data-redis` in `pom.xml`.
-2. Replace `CartService` with a Redis-backed implementation (`data/redis`
-   in-cluster, or Azure Cache for Redis via the `REDIS_HOST`/`REDIS_PORT`
-   env vars already provided by `ecommerce-env-config`).
-3. Then it's safe to scale replicas — carts become shared, not per-pod.
+1. Descomentá `spring-boot-starter-data-redis` en `pom.xml`.
+2. Reemplazá `CartService` con una implementación respaldada por Redis
+   (`data/redis` in-cluster, o Azure Cache for Redis via las env vars
+   `REDIS_HOST`/`REDIS_PORT` ya provistas por `ecommerce-env-config`).
+3. Recién ahí es seguro escalar réplicas — los carritos pasan a ser
+   compartidos, no por pod.
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `cart-svc:8082` |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 6380/443 |
-| `k8s/overlays/prod/` | 2 replicas (after Redis!) |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 6380/443 |
+| `k8s/overlays/prod/` | 2 réplicas (¡después de Redis!) |
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server.
+1. `acr.azurecr.io` → tu ACR login server.

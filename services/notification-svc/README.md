@@ -1,27 +1,28 @@
-# notification-svc — Notification dispatch REST API (+ optional Kafka consumer)
+# notification-svc — API REST de dispatch de notificaciones (+ consumer Kafka opcional)
 
-Stores notifications in-memory through a plain REST API, and demonstrates an
-event-driven integration: a Kafka listener (Azure Event Hubs in production)
-that turns platform events (`order-events`, `payment-events`) into
-notifications. The consumer is gated by `notifications.kafka.enabled`, so the
-service compiles and its tests pass with **zero** broker infrastructure.
+Guarda notificaciones in-memory a través de una API REST simple, y demuestra
+una integración event-driven: un listener de Kafka (Azure Event Hubs en
+producción) que convierte eventos de plataforma (`order-events`,
+`payment-events`) en notificaciones. El consumer está gateado por
+`notifications.kafka.enabled`, así que el servicio compila y sus tests pasan
+con **cero** infraestructura de broker.
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| POST | `/api/notifications` | create: `{type, recipient, subject, body}` → 201 + stored notification |
-| GET | `/api/notifications/{id}` | single notification (404 if unknown) |
-| GET | `/api/notifications` | list all notifications |
+| POST | `/api/notifications` | crea: `{type, recipient, subject, body}` → 201 + notificación guardada |
+| GET | `/api/notifications/{id}` | notificación individual (404 si desconocida) |
+| GET | `/api/notifications` | lista todas las notificaciones |
 
-`type` must be one of: `ORDER_CONFIRMED`, `PAYMENT_RECEIVED`, `PAYMENT_DECLINED`,
-`SHIPPED`, `DELIVERED`, `PROMOTIONAL`, `SYSTEM`.
+`type` debe ser uno de: `ORDER_CONFIRMED`, `PAYMENT_RECEIVED`,
+`PAYMENT_DECLINED`, `SHIPPED`, `DELIVERED`, `PROMOTIONAL`, `SYSTEM`.
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/notification-svc
-mvn spring-boot:run          # starts on :8086 — consumer OFF by default
+mvn spring-boot:run          # arranca en :8086 — consumer OFF por defecto
 ```
 
 ```bash
@@ -30,40 +31,40 @@ curl -X POST localhost:8086/api/notifications \
   -d '{"type":"ORDER_CONFIRMED","recipient":"customer@example.com","subject":"Order update","body":"Order #42 confirmed"}'
 ```
 
-## Enabling the Kafka consumer (production / demo)
+## Habilitar el consumer de Kafka (producción / demo)
 
-1. Set `NOTIFICATIONS_KAFKA_ENABLED=true` (env) or
+1. Seteá `NOTIFICATIONS_KAFKA_ENABLED=true` (env) o
    `notifications.kafka.enabled: true` (config).
-2. Point `spring.kafka.bootstrap-servers` at the broker — in k8s the
-   `ecommerce-env-config` ConfigMap already provides `KAFKA_BOOTSTRAP` with the
-   Azure Event Hubs SASL_SSL endpoint (`*.servicebus.windows.net:9093`); the
-   deployment lists `notification-svc-config` before `ecommerce-env-config` so
-   the env value wins.
-3. Add SASL credentials (`spring.kafka.properties.*`) from Azure Key Vault via
-   external-secrets when connecting to Event Hubs.
+2. Apuntá `spring.kafka.bootstrap-servers` al broker — en k8s el ConfigMap
+   `ecommerce-env-config` ya provee `KAFKA_BOOTSTRAP` con el endpoint
+   SASL_SSL de Azure Event Hubs (`*.servicebus.windows.net:9093`); el
+   deployment lista `notification-svc-config` antes de `ecommerce-env-config`
+   para que el valor del env gane.
+3. Agregá credenciales SASL (`spring.kafka.properties.*`) desde Azure Key Vault
+   via external-secrets cuando te conectes a Event Hubs.
 
-Topics consumed: `order-events`, `payment-events` (groupId `notification-svc`).
+Topics consumidos: `order-events`, `payment-events` (groupId `notification-svc`).
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `notification-svc:8086` |
-| `k8s/base/configmap.yaml` | consumer switch + bootstrap default + config/eureka URLs |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/configmap.yaml` | switch del consumer + default de bootstrap + URLs de config/eureka |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 443/9093 (Event Hubs) |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 443/9093 (Event Hubs) |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes |
 
-## Wiring (one-time, per env)
+## Wiring (one-time, por env)
 
-Add `../../../services/notification-svc/k8s/overlays/prod` to the
-`resources:` list of `cluster/overlays/{env}/kustomization.yaml` — the
-`images:` entry is pre-listed so CD tags it from day one.
+Agregá `../../../services/notification-svc/k8s/overlays/prod` a la lista
+`resources:` de `cluster/overlays/{env}/kustomization.yaml` — la entrada
+`images:` ya está pre-listada para que el CD la tagee desde el día uno.
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (kustomization files + deployment).
-2. Kafka → Azure Event Hubs: enable the consumer flag + SASL credentials in Key
-   Vault (topics `order-events` / `payment-events` must exist).
+1. `acr.azurecr.io` → tu ACR login server (archivos de kustomization + deployment).
+2. Kafka → Azure Event Hubs: habilitá el flag del consumer + credenciales SASL en
+   Key Vault (los topics `order-events` / `payment-events` deben existir).

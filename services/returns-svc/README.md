@@ -1,35 +1,35 @@
-# returns-svc — Return merchandise authorization (RMA) REST API
+# returns-svc — API REST de autorización de devoluciones (RMA)
 
-In-memory RMA store (cart-svc style) with a **visible, documented approval
-rule** so the demo is explainable. Config keys align with `config-service`
-`returns-svc.yml`.
+Store de RMA in-memory (estilo cart-svc) con una **regla de aprobación visible
+y documentada** para que la demo sea explicable. Las claves de config se
+alinean con `config-service` `returns-svc.yml`.
 
-## Auto-approval rule
+## Regla de auto-aprobación
 
-A return is created as **`APPROVED`** when *all* of these hold:
+Una devolución se crea como **`APPROVED`** cuando se cumplen *todas* estas:
 
-1. `reason` is on the allow-list — `returns.auto-approvable-reasons`
+1. `reason` está en la allow-list — `returns.auto-approvable-reasons`
    (`defective, wrong-item, not-as-described`);
-2. it arrives within the return window — `returns.return-window-days` (30);
+2. llega dentro de la ventana de devolución — `returns.return-window-days` (30);
 3. `quantity` ≤ `returns.max-quantity-auto-approve` (10).
 
-Otherwise the RMA is created as **`PENDING_REVIEW`** and an operator decides.
+Si no, la RMA se crea como **`PENDING_REVIEW`** y un operador decide.
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| POST | `/api/returns` | create — body `{"orderId": "12", "productId": 3, "reason": "defective", "quantity": 1}` → 201 (rule above) |
-| GET | `/api/returns/{id}` | single RMA (404 if unknown) |
-| GET | `/api/returns/order/{orderId}` | RMAs of one order (newest first) |
-| POST | `/api/returns/{id}/approve` | operator approval (409 if already rejected) |
-| POST | `/api/returns/{id}/reject` | operator rejection (409 if already approved) |
+| POST | `/api/returns` | crea — body `{"orderId": "12", "productId": 3, "reason": "defective", "quantity": 1}` → 201 (regla de arriba) |
+| GET | `/api/returns/{id}` | RMA individual (404 si desconocida) |
+| GET | `/api/returns/order/{orderId}` | RMAs de un pedido (más nuevas primero) |
+| POST | `/api/returns/{id}/approve` | aprobación de operador (409 si ya está rechazada) |
+| POST | `/api/returns/{id}/reject` | rechazo de operador (409 si ya está aprobada) |
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/returns-svc
-mvn spring-boot:run          # starts on :8095
+mvn spring-boot:run          # arranca en :8095
 ```
 
 ```bash
@@ -40,32 +40,34 @@ curl -X POST localhost:8095/api/returns/2/approve
 curl localhost:8095/api/returns/order/12
 ```
 
-## Production design
+## Diseño de producción
 
-- **Store**: move RMAs to a database (shared, durable, audit-trail friendly).
-- **Policy as code**: keep the rule in one place (ideally a rules engine /
-  workflow such as Azure Logic Apps) so approvals are consistent across
-  channels; add evidence capture (photos) and refund orchestration on approval.
+- **Store**: mover las RMAs a una base de datos (compartida, durable, amigable
+  con audit-trail).
+- **Política como código**: mantener la regla en un solo lugar (idealmente un
+  rules engine / workflow como Azure Logic Apps) para que las aprobaciones sean
+  consistentes entre canales; agregar captura de evidencia (fotos) y
+  orquestación de reembolsos en la aprobación.
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `returns-svc:8095` |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 443 |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources (⚠ in-memory note) |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 443 |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes (⚠ nota in-memory) |
 
-## Wiring (one-time, per env)
+## Wiring (one-time, por env)
 
-Add `../../../services/returns-svc/k8s/{base|overlays/prod}` to the
-`resources:` list of `cluster/overlays/{env}/kustomization.yaml` (base for
-dev/staging, prod overlay for prod) — the `images:` entry is pre-listed so CD
-tags it from day one.
+Agregá `../../../services/returns-svc/k8s/{base|overlays/prod}` a la lista
+`resources:` de `cluster/overlays/{env}/kustomization.yaml` (base para
+dev/staging, overlay de prod para prod) — la entrada `images:` ya está
+pre-listada para que el CD la tagee desde el día uno.
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (kustomization files + deployment).
-2. In-memory store → database-backed RMAs for production.
+1. `acr.azurecr.io` → tu ACR login server (archivos de kustomization + deployment).
+2. Store in-memory → RMAs respaldadas por base de datos para producción.

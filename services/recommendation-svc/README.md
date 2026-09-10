@@ -1,26 +1,26 @@
-# recommendation-svc — Product recommendation REST API
+# recommendation-svc — API REST de recomendaciones de productos
 
-In-memory, collaborative-ish scoring seeded from a small by-customer purchase
-map (plus an also-bought graph). Two entry points: recommendations per customer
-and "similar to this product" per customer. Production design: offline ML → Redis
-cache (see below).
+Scoring en memoria, estilo colaborativo, seedeado desde un pequeño map de
+compras por cliente (más un grafo also-bought). Dos entry points:
+recomendaciones por cliente y "similar a este producto" por cliente. Diseño de
+producción: ML offline → cache Redis (ver abajo).
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| GET | `/api/recommendations?customerId=<id>&limit=<n>` | recommendations for a customer (unknown id → popular fallback) |
-| GET | `/api/recommendations/{customerId}/similar?productId=<id>&limit=<n>` | products similar to the seed product for that customer |
+| GET | `/api/recommendations?customerId=<id>&limit=<n>` | recomendaciones para un cliente (id desconocido → fallback popular) |
+| GET | `/api/recommendations/{customerId}/similar?productId=<id>&limit=<n>` | productos similares al producto seed para ese cliente |
 
-`limit` defaults to `recommendation.default-limit` (5) and is capped at
-`recommendation.max-limit` (10). Each result carries `productId`, `name`,
+`limit` default a `recommendation.default-limit` (5) y está acotado a
+`recommendation.max-limit` (10). Cada resultado lleva `productId`, `name`,
 `category`, `score`, `reason` (`also-bought` / `same-category`).
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/recommendation-svc
-mvn spring-boot:run          # starts on :8092
+mvn spring-boot:run          # arranca en :8092
 ```
 
 ```bash
@@ -28,37 +28,37 @@ curl "localhost:8092/api/recommendations?customerId=cust-1"
 curl "localhost:8092/api/recommendations/cust-1/similar?productId=1"
 ```
 
-## Production design
+## Diseño de producción
 
-The naive in-memory scoring recomputes everything at request time. Production:
+El scoring naive en memoria recalcula todo en tiempo de request. Producción:
 
-1. **Offline ML job** (e.g. Azure Databricks / Synapse) trains a collaborative
-   filter or embeddings model nightly from the analytics events
-   (`analytics-svc`) and writes the top-N recommendations per customer.
-2. **Redis cache** (Azure Cache for Redis) serves reads: `GET
-   recs:{customerId}` is an O(N) cache lookup; a miss falls back to a coarse
-   "popular in category" default.
-3. The REST contract above stays identical — only `RecommendationService`
-   changes to a Redis-backed implementation.
+1. **Job de ML offline** (p. ej. Azure Databricks / Synapse) entrena un
+   collaborative filter o embeddings models nightly desde los eventos de
+   analytics (`analytics-svc`) y escribe las recomendaciones top-N por cliente.
+2. **Cache Redis** (Azure Cache for Redis) sirve las lecturas: `GET
+   recs:{customerId}` es una lookup O(N) de cache; un miss cae a un default
+   grueso "popular en categoría".
+3. El contrato REST de arriba queda idéntico — solo cambia
+   `RecommendationService` a una implementación respaldada por Redis.
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `recommendation-svc:8092` |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 443 |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 443 |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes |
 
-## Wiring (one-time, per env)
+## Wiring (one-time, por env)
 
-Add `../../../services/recommendation-svc/k8s/{base|overlays/prod}` to the
-`resources:` list of `cluster/overlays/{env}/kustomization.yaml` (base for
-dev/staging, prod overlay for prod) — the `images:` entry is pre-listed so CD
-tags it from day one.
+Agregá `../../../services/recommendation-svc/k8s/{base|overlays/prod}` a la
+lista `resources:` de `cluster/overlays/{env}/kustomization.yaml` (base para
+dev/staging, overlay de prod para prod) — la entrada `images:` ya está
+pre-listada para que el CD la tagee desde el día uno.
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (kustomization files + deployment).
+1. `acr.azurecr.io` → tu ACR login server (archivos de kustomization + deployment).

@@ -1,25 +1,25 @@
 # config-service (Spring Cloud Config Server)
 
-Centralised configuration for every service. Serves YAML from a **native
-filesystem** backend (`src/main/resources/config/`) — no Git server needed to
-run. Start it, and clients fetch `catalog-svc.yml`, `cart-svc.yml` etc. from
-`http://config-service:8888`.
+Configuración centralizada para cada servicio. Sirve YAML desde un backend
+**filesystem nativo** (`src/main/resources/config/`) — no necesita servidor de
+Git para correr. Arrancalo, y los clientes bajan `catalog-svc.yml`,
+`cart-svc.yml` etc. desde `http://config-service:8888`.
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/config-service
 mvn spring-boot:run
 ```
 
-- Config endpoint: `http://localhost:8888/<service-name>/demo`
+- Endpoint de config: `http://localhost:8888/<service-name>/demo`
 - Health: `http://localhost:8888/actuator/health`
-- Prometheus metrics: `http://localhost:8888/actuator/prometheus`
-- Env (debug which property wins): `http://localhost:8888/actuator/env`
+- Métricas de Prometheus: `http://localhost:8888/actuator/prometheus`
+- Env (debug de qué propiedad gana): `http://localhost:8888/actuator/env`
 
-## Switching to a Git backend (production pattern)
+## Cambiar a un backend Git (patrón de producción)
 
-In `src/main/resources/application.yml`, replace the `native` block with:
+En `src/main/resources/application.yml`, reemplazá el bloque `native` con:
 
 ```yaml
 spring:
@@ -32,26 +32,28 @@ spring:
           clone-on-start: true
 ```
 
-Clients are unaffected — Spring Cloud Config clients don't care about the backend.
+Los clientes no se afectan — los clientes de Spring Cloud Config no les
+importa el backend.
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `config-service:8888` |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from all `ecommerce-platform` pods; egress DNS + 443 |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources, ACR image |
+| `k8s/base/networkpolicy.yaml` | ingress desde todos los pods de `ecommerce-platform`; egress DNS + 443 |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes, imagen ACR |
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (in `k8s/base/kustomization.yaml`,
-   `k8s/overlays/prod/kustomization.yaml` and `k8s/base/deployment.yaml`) —
-   the CD workflow tags images by matching `newName` in the overlay.
-2. Nothing else — the service itself has no external dependencies.
+1. `acr.azurecr.io` → tu ACR login server (en `k8s/base/kustomization.yaml`,
+   `k8s/overlays/prod/kustomization.yaml` y `k8s/base/deployment.yaml`) —
+   el workflow de CD tagea imágenes matcheando `newName` en el overlay.
+2. Nada más — el servicio en sí no tiene dependencias externas.
 
-> NOTE: Kyverno's `disallow-latest-tag` policy (Enforce) means the `:latest`
-> placeholder image is rejected until the overlay's `newTag` carries a commit
-> SHA. Run the CD pipeline once, or set `newTag` manually before applying.
+> NOTA: la política `disallow-latest-tag` de Kyverno (Enforce) significa que la
+> imagen placeholder `:latest` se rechaza hasta que el `newTag` del overlay
+> lleve un SHA de commit. Corré el pipeline de CD una vez, o seteá `newTag`
+> manualmente antes de aplicar.

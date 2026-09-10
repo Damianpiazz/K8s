@@ -1,31 +1,32 @@
-# bff-web — Backend-for-frontend for the web storefront
+# bff-web — Backend-for-frontend del storefront web
 
-Non-blocking aggregation of catalog-svc (:8081) + cart-svc (:8082) into
-storefront views using Spring WebFlux WebClient (2s timeouts). When a backend
-is unreachable the BFF degrades gracefully — the page keeps rendering with
-partial data and a `degraded: true` flag (resilience demo).
+Agregación no bloqueante de catalog-svc (:8081) + cart-svc (:8082) en vistas
+del storefront usando Spring WebFlux WebClient (timeouts de 2s). Cuando un
+backend no está disponible, el BFF degrada con gracia — la página sigue
+renderizando con datos parciales y un flag `degraded: true` (demo de
+resiliencia).
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| GET | `/api/bff/home` | `{products, hero, degraded}` — product grid + featured product |
-| GET | `/api/bff/cart/{cartId}` | `{cartId, items[], total, degraded}` — cart joined with product details |
+| GET | `/api/bff/home` | `{products, hero, degraded}` — grilla de productos + producto destacado |
+| GET | `/api/bff/cart/{cartId}` | `{cartId, items[], total, degraded}` — carrito unido con detalles de producto |
 
-Degradation rules:
-- catalog-svc down on `/home` → 200 with `products: []`, `hero: null`, `degraded: true`.
-- cart-svc down on `/cart/{id}` → 200 with `items: []`, `degraded: true`.
-- catalog-svc down while joining cart items → items keep quantity/price with
-  name `"Product #<id>"` (per-item degrade).
+Reglas de degradación:
+- catalog-svc caído en `/home` → 200 con `products: []`, `hero: null`, `degraded: true`.
+- cart-svc caído en `/cart/{id}` → 200 con `items: []`, `degraded: true`.
+- catalog-svc caído al unir items del carrito → los items mantienen
+  quantity/price con nombre `"Product #<id>"` (degradación por item).
 
-## Run locally
+## Correrlo localmente
 
-Needs catalog-svc (:8081) and cart-svc (:8082) for full data; without them the
-BFF still answers with degraded payloads:
+Necesita catalog-svc (:8081) y cart-svc (:8082) para datos completos; sin ellos
+el BFF igual responde con payloads degradados:
 
 ```bash
 cd services/bff-web
-mvn spring-boot:run          # starts on :8090
+mvn spring-boot:run          # arranca en :8090
 ```
 
 ```bash
@@ -33,27 +34,27 @@ curl localhost:8090/api/bff/home
 curl localhost:8090/api/bff/cart/session-1
 ```
 
-In k8s the deployment overrides the base URLs via
-`BFF_CATALOG_BASE_URL=http://catalog-svc:8081` and
+En k8s el deployment sobreescribe las URLs base via
+`BFF_CATALOG_BASE_URL=http://catalog-svc:8081` y
 `BFF_CART_BASE_URL=http://cart-svc:8082`.
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources, backend base URLs |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources, URLs base de backends |
 | `k8s/base/service.yaml` | ClusterIP `bff-web:8090` |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + platform peers + 443 |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers de plataforma + 443 |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes |
 
-## Wiring (one-time, per env)
+## Wiring (one-time, por env)
 
-Add `../../../services/bff-web/k8s/overlays/prod` to the
-`resources:` list of `cluster/overlays/{env}/kustomization.yaml` — the
-`images:` entry is pre-listed so CD tags it from day one.
+Agregá `../../../services/bff-web/k8s/overlays/prod` a la lista
+`resources:` de `cluster/overlays/{env}/kustomization.yaml` — la entrada
+`images:` ya está pre-listada para que el CD la tagee desde el día uno.
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (kustomization files + deployment).
+1. `acr.azurecr.io` → tu ACR login server (archivos de kustomization + deployment).

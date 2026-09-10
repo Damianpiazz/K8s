@@ -1,26 +1,28 @@
-# order-svc — Order management REST API
+# order-svc — API REST de gestión de pedidos
 
-Order CRUD backed by Spring Data JPA. Demo profile uses in-memory H2 and seeds
-2 sample orders on startup; the deployment can flip to Azure managed Postgres
-without code changes. Config keys align with `config-service`
-`order-svc.yml` (`order.max-items-per-order`).
+CRUD de pedidos respaldado por Spring Data JPA. El perfil de demo usa H2
+in-memory y seedea 2 pedidos de ejemplo al arrancar; el deployment puede
+cambiar a Postgres gestionado por Azure sin cambios de código. Las claves de
+config se alinean con `config-service` `order-svc.yml`
+(`order.max-items-per-order`).
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| POST | `/api/orders` | create: `{customerId, items:[{productId, quantity, price}], total}` → 201 + order (status `CREATED`) |
-| GET | `/api/orders` | list all orders |
-| GET | `/api/orders/{id}` | single order (404 if unknown) |
-| GET | `/api/orders/customer/{customerId}` | orders of one customer (newest first) |
+| POST | `/api/orders` | crea: `{customerId, items:[{productId, quantity, price}], total}` → 201 + pedido (estado `CREATED`) |
+| GET | `/api/orders` | lista todos los pedidos |
+| GET | `/api/orders/{id}` | pedido individual (404 si desconocido) |
+| GET | `/api/orders/customer/{customerId}` | pedidos de un cliente (más nuevos primero) |
 
-Validation: at least one item, positive quantities, ≤ `order.max-items-per-order` (50).
+Validación: al menos un item, quantities positivas, ≤
+`order.max-items-per-order` (50).
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/order-svc
-mvn spring-boot:run          # starts on :8084, seeds sample orders
+mvn spring-boot:run          # arranca en :8084, seedea pedidos de ejemplo
 ```
 
 ```bash
@@ -31,33 +33,34 @@ curl -X POST localhost:8084/api/orders \
   -d '{"customerId":"cust-1","items":[{"productId":1,"quantity":2,"price":29.99}],"total":59.98}'
 ```
 
-## Switching to Azure managed Postgres
+## Cambiar a Postgres gestionado por Azure
 
-`k8s/base/configmap.yaml` (`order-svc-config`) holds the datasource defaults.
-The `ecommerce-env-config` ConfigMap (from `cluster/overlays/*`) already carries
-`DB_HOST` / `DB_PORT` / `DB_NAME`. Override the `SPRING_DATASOURCE_*` keys per
-the commented instructions in that file, and put the password in Azure Key Vault
-(external-secrets pattern — see `cluster/base/external-secrets/`).
+`k8s/base/configmap.yaml` (`order-svc-config`) guarda los defaults del
+datasource. El ConfigMap `ecommerce-env-config` (de `cluster/overlays/*`) ya
+lleva `DB_HOST` / `DB_PORT` / `DB_NAME`. Sobreescribí las claves
+`SPRING_DATASOURCE_*` según las instrucciones comentadas en ese archivo, y poné
+el password en Azure Key Vault (patrón external-secrets — ver
+`cluster/base/external-secrets/`).
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `order-svc:8084` |
-| `k8s/base/configmap.yaml` | datasource defaults + config/eureka URLs |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/configmap.yaml` | defaults de datasource + URLs de config/eureka |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 5432/443 |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources (⚠ H2 note) |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 5432/443 |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes (⚠ nota de H2) |
 
-## Wiring (one-time, per env)
+## Wiring (one-time, por env)
 
-Add `../../../services/order-svc/k8s/overlays/prod` to the
-`resources:` list of `cluster/overlays/{env}/kustomization.yaml` — the
-`images:` entry is pre-listed so CD tags it from day one.
+Agregá `../../../services/order-svc/k8s/overlays/prod` a la lista
+`resources:` de `cluster/overlays/{env}/kustomization.yaml` — la entrada
+`images:` ya está pre-listada para que el CD la tagee desde el día uno.
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (kustomization files + deployment).
-2. Datasource → Azure Postgres (see configmap comments) + DB credentials in Key Vault.
+1. `acr.azurecr.io` → tu ACR login server (archivos de kustomization + deployment).
+2. Datasource → Postgres de Azure (ver comentarios del configmap) + credenciales de DB en Key Vault.

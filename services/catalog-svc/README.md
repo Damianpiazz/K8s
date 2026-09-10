@@ -1,24 +1,24 @@
-# catalog-svc — Product catalog REST API
+# catalog-svc — API REST de catálogo de productos
 
-Product CRUD backed by Spring Data JPA. Demo profile uses in-memory H2 and
-seeds 4 products on startup; the deployment can flip to Azure managed Postgres
-without code changes.
+CRUD de productos respaldado por Spring Data JPA. El perfil de demo usa H2
+in-memory y seedea 4 productos al arrancar; el deployment puede cambiar a
+Postgres gestionado por Azure sin cambios de código.
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| GET | `/api/catalog/products` | list all (optional `?category=` filter) |
-| GET | `/api/catalog/products/{id}` | single product (404 if unknown) |
-| POST | `/api/catalog/products` | create (returns 201 + entity with id) |
-| PUT | `/api/catalog/products/{id}` | full update (404 if unknown) |
-| DELETE | `/api/catalog/products/{id}` | delete (204; 404 if unknown) |
+| GET | `/api/catalog/products` | lista todos (filtro opcional `?category=`) |
+| GET | `/api/catalog/products/{id}` | producto individual (404 si desconocido) |
+| POST | `/api/catalog/products` | crea (devuelve 201 + entidad con id) |
+| PUT | `/api/catalog/products/{id}` | update completo (404 si desconocido) |
+| DELETE | `/api/catalog/products/{id}` | elimina (204; 404 si desconocido) |
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/catalog-svc
-mvn spring-boot:run          # starts on :8081, seeds demo data
+mvn spring-boot:run          # arranca en :8081, seedea datos demo
 ```
 
 ```bash
@@ -28,27 +28,28 @@ curl -X POST localhost:8081/api/catalog/products \
   -d '{"name":"Webcam HD-720","description":"1080p","price":59.99,"stock":25,"category":"Accessories"}'
 ```
 
-## Switching to Azure managed Postgres
+## Cambiar a Postgres gestionado por Azure
 
-`k8s/base/configmap.yaml` (`catalog-svc-config`) holds the datasource defaults.
-The `ecommerce-env-config` ConfigMap (from `cluster/overlays/*`) already carries
-`DB_HOST` / `DB_PORT` / `DB_NAME`. Override the `SPRING_DATASOURCE_*` keys per
-the commented instructions in that file, and put the password in Azure Key Vault
-(external-secrets pattern — see `cluster/base/external-secrets/`).
+`k8s/base/configmap.yaml` (`catalog-svc-config`) guarda los defaults del
+datasource. El ConfigMap `ecommerce-env-config` (de `cluster/overlays/*`) ya
+lleva `DB_HOST` / `DB_PORT` / `DB_NAME`. Sobreescribí las claves
+`SPRING_DATASOURCE_*` según las instrucciones comentadas en ese archivo, y poné
+el password en Azure Key Vault (patrón external-secrets — ver
+`cluster/base/external-secrets/`).
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `catalog-svc:8081` |
-| `k8s/base/configmap.yaml` | datasource defaults + config/eureka URLs |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/configmap.yaml` | defaults de datasource + URLs de config/eureka |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 5432/443 |
-| `k8s/overlays/prod/` | 3 replicas, bigger resources |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 5432/443 |
+| `k8s/overlays/prod/` | 3 réplicas, resources más grandes |
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server.
-2. Datasource → Azure Postgres (see configmap comments) + DB credentials in Key Vault.
+1. `acr.azurecr.io` → tu ACR login server.
+2. Datasource → Postgres de Azure (ver comentarios del configmap) + credenciales de DB en Key Vault.

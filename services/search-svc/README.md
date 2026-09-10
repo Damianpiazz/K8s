@@ -1,25 +1,26 @@
-# search-svc — Product search REST API
+# search-svc — API REST de búsqueda de productos
 
-Read-only in-memory search over a small static catalog (id 1-8, mirrors
-inventory-svc and the catalog seed). Results are scored and ordered best-first.
-Production would back this with Azure AI Search / Elasticsearch.
+Búsqueda read-only en memoria sobre un catálogo estático pequeño (id 1-8,
+refleja inventory-svc y el seed del catálogo). Los resultados se scorean y
+ordenan best-first. Producción lo respaldaría con Azure AI Search /
+Elasticsearch.
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| GET | `/api/search?q=<term>&category=<optional>` | matching products with relevance score, best first |
-| GET | `/api/search/hot` | most popular query terms (ranked, capped by `search.hot-limit`) |
+| GET | `/api/search?q=<term>&category=<opcional>` | productos que matchean con score de relevancia, mejores primero |
+| GET | `/api/search/hot` | términos de query más populares (rankeados, acotados por `search.hot-limit`) |
 
-Scoring (spec): name match = 3, description match = 1, tag match = 1; only hits
-with score > 0 are returned. Match is case-insensitive `contains`. Results
-capped at `search.max-results` (10).
+Scoring (spec): match de nombre = 3, match de descripción = 1, match de tag =
+1; solo se devuelven hits con score > 0. El match es `contains`
+case-insensitive. Resultados acotados a `search.max-results` (10).
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/search-svc
-mvn spring-boot:run          # starts on :8091
+mvn spring-boot:run          # arranca en :8091
 ```
 
 ```bash
@@ -28,30 +29,31 @@ curl "localhost:8091/api/search?q=hd&category=Audio"
 curl localhost:8091/api/search/hot
 ```
 
-## Production design
+## Diseño de producción
 
-A single in-memory static index does not scale to real catalogs. Swap
-`SearchService` for Azure AI Search (index + full-text scoring + suggestions);
-keep the REST contract (query → scored hits). Hot searches would come from
-aggregated query analytics rather than per-pod counters.
+Un índice estático in-memory único no escala a catálogos reales. Cambiá
+`SearchService` por Azure AI Search (índice + full-text scoring +
+suggestions); mantené el contrato REST (query → scored hits). Las búsquedas
+hot vendrían de analítica de queries agregada en vez de contadores por pod.
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `search-svc:8091` |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 443 |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 443 |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes |
 
-## Wiring (one-time, per env)
+## Wiring (one-time, por env)
 
-Add `../../../services/search-svc/k8s/{base|overlays/prod}` to the `resources:`
-list of `cluster/overlays/{env}/kustomization.yaml` (base for dev/staging, prod
-overlay for prod) — the `images:` entry is pre-listed so CD tags it from day one.
+Agregá `../../../services/search-svc/k8s/{base|overlays/prod}` a la lista
+`resources:` de `cluster/overlays/{env}/kustomization.yaml` (base para
+dev/staging, overlay de prod para prod) — la entrada `images:` ya está
+pre-listada para que el CD la tagee desde el día uno.
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (kustomization files + deployment).
+1. `acr.azurecr.io` → tu ACR login server (archivos de kustomization + deployment).

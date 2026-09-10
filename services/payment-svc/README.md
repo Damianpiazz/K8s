@@ -1,27 +1,28 @@
-# payment-svc — Payment processing REST API
+# payment-svc — API REST de procesamiento de pagos
 
-Processes payment attempts with a simple approval rule and keeps an in-memory
-store for the demo. The JPA/H2/Postgres stack is on the classpath with config
-keys aligned to `config-service` `payment-svc.yml` — ready for Azure Postgres.
+Procesa intentos de pago con una regla de aprobación simple y mantiene un
+store in-memory para la demo. El stack JPA/H2/Postgres está en el classpath con
+claves de config alineadas a `config-service` `payment-svc.yml` — listo para
+Azure Postgres.
 
 ## Endpoints
 
-| Method | Path | Behavior |
+| Método | Path | Comportamiento |
 |---|---|---|
-| POST | `/api/payments` | process: `{orderId, amount, method, cardLast4?}` → 201 + payment with `APPROVED`/`DECLINED` |
-| GET | `/api/payments/{id}` | single payment (404 if unknown) |
-| GET | `/api/payments/order/{orderId}` | all payments of one order |
-| GET | `/api/payments` | list all payments |
+| POST | `/api/payments` | procesa: `{orderId, amount, method, cardLast4?}` → 201 + pago con `APPROVED`/`DECLINED` |
+| GET | `/api/payments/{id}` | pago individual (404 si desconocido) |
+| GET | `/api/payments/order/{orderId}` | todos los pagos de un pedido |
+| GET | `/api/payments` | lista todos los pagos |
 
-Approval rule (demo): `amount ≤ 0` → DECLINED; placeholder `cardLast4`
-ending in `0000` → DECLINED; everything else → APPROVED. A real system would
-delegate the decision to a PSP (Stripe/Adyen) tokenization service.
+Regla de aprobación (demo): `amount ≤ 0` → DECLINED; `cardLast4` placeholder
+que termina en `0000` → DECLINED; todo lo demás → APPROVED. Un sistema real
+delegaría la decisión a un servicio de tokenización PSP (Stripe/Adyen).
 
-## Run locally
+## Correrlo localmente
 
 ```bash
 cd services/payment-svc
-mvn spring-boot:run          # starts on :8085
+mvn spring-boot:run          # arranca en :8085
 ```
 
 ```bash
@@ -30,33 +31,33 @@ curl -X POST localhost:8085/api/payments \
   -d '{"orderId":1,"amount":149.48,"method":"card","cardLast4":"4242"}'
 ```
 
-## Switching to Azure managed Postgres
+## Cambiar a Postgres gestionado por Azure
 
-`k8s/base/configmap.yaml` (`payment-svc-config`) holds the datasource defaults.
-Override the `SPRING_DATASOURCE_*` keys per the commented instructions (DB
-credentials from Azure Key Vault via external-secrets) and swap the in-memory
-`PaymentService` for its `PaymentRepository` (JPA) implementation — the REST
-contract stays identical.
+`k8s/base/configmap.yaml` (`payment-svc-config`) guarda los defaults del
+datasource. Sobreescribí las claves `SPRING_DATASOURCE_*` según las
+instrucciones comentadas (credenciales de DB desde Azure Key Vault via
+external-secrets) y cambiá el `PaymentService` in-memory por su
+implementación `PaymentRepository` (JPA) — el contrato REST queda idéntico.
 
 ## Kubernetes
 
-| Manifest | Purpose |
+| Manifiesto | Propósito |
 |---|---|
-| `k8s/base/deployment.yaml` | 1 replica, probes, securityContext, resources |
+| `k8s/base/deployment.yaml` | 1 réplica, probes, securityContext, resources |
 | `k8s/base/service.yaml` | ClusterIP `payment-svc:8085` |
-| `k8s/base/configmap.yaml` | datasource defaults + config/eureka URLs |
-| `k8s/base/hpa.yaml` | CPU 70%, 1→5 replicas |
+| `k8s/base/configmap.yaml` | defaults de datasource + URLs de config/eureka |
+| `k8s/base/hpa.yaml` | CPU 70%, réplicas 1→5 |
 | `k8s/base/pdb.yaml` | minAvailable 1 |
-| `k8s/base/networkpolicy.yaml` | ingress from api-gateway; egress DNS + peers + 5432/443 |
-| `k8s/overlays/prod/` | 2 replicas, bigger resources (⚠ in-memory note) |
+| `k8s/base/networkpolicy.yaml` | ingress desde api-gateway; egress DNS + peers + 5432/443 |
+| `k8s/overlays/prod/` | 2 réplicas, resources más grandes (⚠ nota in-memory) |
 
-## Wiring (one-time, per env)
+## Wiring (one-time, por env)
 
-Add `../../../services/payment-svc/k8s/overlays/prod` to the
-`resources:` list of `cluster/overlays/{env}/kustomization.yaml` — the
-`images:` entry is pre-listed so CD tags it from day one.
+Agregá `../../../services/payment-svc/k8s/overlays/prod` a la lista
+`resources:` de `cluster/overlays/{env}/kustomization.yaml` — la entrada
+`images:` ya está pre-listada para que el CD la tagee desde el día uno.
 
-## Placeholders to replace
+## Placeholders a reemplazar
 
-1. `acr.azurecr.io` → your ACR login server (kustomization files + deployment).
-2. Store → Azure Postgres (see configmap comments) + credentials in Key Vault.
+1. `acr.azurecr.io` → tu ACR login server (archivos de kustomization + deployment).
+2. Store → Postgres de Azure (ver comentarios del configmap) + credenciales en Key Vault.
