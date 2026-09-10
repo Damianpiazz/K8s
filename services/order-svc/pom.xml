@@ -41,10 +41,13 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Azure managed Postgres driver (kept on classpath; unused with H2). -->
+        <!-- Azure managed Postgres driver (kept on classpath; unused with H2).
+             Explicit version: parent 3.3.5 manages 42.7.4, which has
+             CVE-2025-49146 / CVE-2026-42198 / CVE-2026-54291. -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <version>42.7.13</version>
             <scope>runtime</scope>
         </dependency>
 

@@ -1,0 +1,9 @@
+# CVE-2026-22733 - Spring Boot Actuator auth bypass via the CloudFoundry endpoint.
+# Accepted risk (scoped, this CVE only):
+#   - These services do not expose or use the CloudFoundry actuator endpoint;
+#     actuator is limited to /actuator/health for probes (see k8s contracts).
+#   - The OSS fix ships only in Spring Boot 3.5.12, a major-line bump with
+#     Spring Security / Spring Cloud 2023.0.3 compatibility risk.
+# Follow-up scheduled: bump Spring Boot to 3.5.12 in a dedicated change and
+# remove this entry once the bump lands.
+CVE-2026-22733
