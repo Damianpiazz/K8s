@@ -26,8 +26,6 @@ RUN pnpm build
 # ── Stage 2: Runtime ───────────────────────────────────────────────────────
 FROM node:22-alpine AS runtime
 
-RUN addgroup -S appgroup && adduser -S appuser -u 1000
-
 WORKDIR /app
 
 # Copy Next.js standalone output (self-contained server + minimal deps).
@@ -37,7 +35,8 @@ COPY --from=build /workspace/.next/static ./.next/static
 # Copy public assets.
 COPY --from=build /workspace/public ./public
 
-USER appuser
+# Use the built-in node user (UID 1000) already present in node:22-alpine.
+USER node
 
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 EXPOSE 3000
