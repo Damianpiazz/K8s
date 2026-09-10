@@ -1,56 +1,59 @@
-# ADR-0009: PSA restricted + Kyverno policies as the admission chain
+# ADR-0009: PSA restricted + políticas de Kyverno como cadena de admisión
 
-- **Status**: accepted
-- **Date**: 2026-09-07
-- **Deciders**: platform team
+- **Estado**: aceptado
+- **Fecha**: 2026-09-07
+- **Decisores**: equipo de plataforma
 
-## Context
+## Contexto
 
-The security phase requires hard gates on what can run in the tenant
-namespace: no root containers, no privileged workloads, no `latest` image
-tags, no missing labels/resources. Kubernetes ships a built-in admission
-chain (Pod Security Admission) and the platform already installs Kyverno
-(`cluster/base/kyverno/policies/`) — the two must be combined without
-fighting each other.
+La fase de seguridad requiere gates duros sobre lo que puede correr en el
+namespace del tenant: no contenedores root, no workloads privilegiados, no
+tags `latest` de imagen, no labels/recursos faltantes. Kubernetes trae una
+cadena de admisión built-in (Pod Security Admission) y la plataforma ya
+instala Kyverno (`cluster/base/kyverno/policies/`) — los dos deben combinarse
+sin pelearse.
 
-## Decision
+## Decisión
 
-- **PSA `restricted`** enforced via namespace labels
-  (`security/pod-security/pod-security-labels.yaml`) on **ecommerce + data**;
-  `observability`/`security`/`platform` stay audit+warn (chart workloads are
-  not restricted-compliant yet).
-- **Kyverno ClusterPolicies** (Enforce on tenant namespaces):
-  `require-labels` (app + env on every Pod), `disallow-latest-tag`,
-  `require-resources` (Audit until every workload declares resources); an
-  Audit-mode `disallow-plain-secrets` guard (ADR-0007) completes the layer.
-- Service deployments conform: `runAsNonRoot: true`, `runAsUser: 1000`,
-  `allowPrivilegeEscalation: false`, drop ALL capabilities,
-  `seccompProfile: {type: RuntimeDefault}` — verified by
-  `tests/manifests/test-service-contract.py` for all 17 services.
-- **default-deny NetworkPolicy** (`security/network-policies/default-deny-all.yaml`)
-  covers pods without a per-service policy; per-service policies keep working
-  via policy union semantics.
+- **PSA `restricted`** aplicado via labels de namespaces
+  (`security/pod-security/pod-security-labels.yaml`) en **ecommerce + data**;
+  `observability`/`security`/`platform` quedan en audit+warn (los workloads
+  de charts todavía no cumplen restricted).
+- **ClusterPolicies de Kyverno** (Enforce en namespaces del tenant):
+  `require-labels` (app + env en cada Pod), `disallow-latest-tag`,
+  `require-resources` (Audit hasta que cada workload declare recursos); un
+  guard `disallow-plain-secrets` en Audit (ADR-0007) completa la capa.
+- Los deployments de servicios cumplen: `runAsNonRoot: true`,
+  `runAsUser: 1000`, `allowPrivilegeEscalation: false`, drop de TODAS las
+  capabilities, `seccompProfile: {type: RuntimeDefault}` — verificado por
+  `tests/manifests/test-service-contract.py` para los 17 servicios.
+- **default-deny NetworkPolicy**
+  (`security/network-policies/default-deny-all.yaml`) cubre los pods sin
+  política por servicio; las políticas por servicio siguen funcionando via
+  semántica de unión de políticas.
 
-## Consequences
+## Consecuencias
 
-- Admission chain per Pod in `ecommerce`: PSA (hard gate) → Kyverno labels/
-  image/resource checks → NetworkPolicy isolation at runtime.
-- Charts/tooling that violate restricted must stay out of the tenant
-  namespaces — this is why platform namespaces are audit-only (documented
-  interplay in `security/README.md`).
-- `disallow-latest-tag` rejects manual applies with `:latest` images —
-  a documented workflow constraint (run the CD pipeline or
-  `deploy-cd-manual.ps1` first).
-- `runAsUser: 1000` + `readOnlyRootFilesystem: false` is restricted-legal
-  (services write /tmp for embedded Tomcat); no privilege creep.
+- Cadena de admisión por Pod en `ecommerce`: PSA (gate duro) → chequeos de
+  labels/recursos de imagen de Kyverno → aislamiento de NetworkPolicy en
+  runtime.
+- Los charts/tooling que violan restricted deben quedarse fuera de los
+  namespaces del tenant — por eso los namespaces de plataforma son
+  audit-only (interacción documentada en `security/README.md`).
+- `disallow-latest-tag` rechaza applies manuales con imágenes `:latest` —
+  una restricción de flujo de trabajo documentada (correr el pipeline de CD o
+  `deploy-cd-manual.ps1` primero).
+- `runAsUser: 1000` + `readOnlyRootFilesystem: false` es legal bajo
+  restricted (los servicios escriben /tmp para el Tomcat embebido); sin
+  escalada de privilegios.
 
-## Alternatives considered
+## Alternativas consideradas
 
-- **Kyverno for everything (no PSA)**: single mechanism, but built-in PSA is
-  free, webhook-free and the course explicitly asks for it; both are
-  demonstrated and documented — richer answer for the professor.
-- **OPA/Gatekeeper**: equivalent to Kyverno but the repo already ships
-  Kyverno with chart applications; switching would touch the platform layer.
-- **Enforce restricted on all namespaces**: fails immediately on
-  chart workloads (verified limitation) — the audit/warn matrix is the
-  honest middle ground until each chart is restricted-compliant.
+- **Solo Kyverno (sin PSA)**: mecanismo único, pero el PSA built-in es
+  gratis, sin webhooks y el curso lo pide explícitamente; ambos quedan
+  demostrados y documentados — respuesta más rica para el profesor.
+- **OPA/Gatekeeper**: equivalente a Kyverno pero el repo ya trae Kyverno con
+  applications de charts; cambiarlo tocaría la capa de plataforma.
+- **Enforce restricted en todos los namespaces**: falla inmediatamente en los
+  workloads de charts (limitación verificada) — la matriz audit/warn es el
+  término medio honesto hasta que cada chart sea restricted-compliant.

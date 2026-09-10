@@ -1,67 +1,66 @@
-# Documentation — e-commerce platform on Kubernetes
+# Documentación — plataforma e-commerce en Kubernetes
 
-This folder is the project's knowledge base. **Theoretical** material
-(components, commands, use cases — Spanish, written for the exam) sits next
-to **operational** material (ADRs, runbooks, diagrams — English, written for
-whoever operates or extends the platform). Start here, then go deep where the
-task takes you.
+Esta carpeta es la base de conocimiento del proyecto. El material **teórico**
+(componentes, comandos, casos de uso) convive con el material
+**operacional** (ADRs, runbooks, diagramas). Empezá acá y profundizá según
+la tarea que necesites resolver.
 
-## Quick navigation
+## Navegación rápida
 
-| I need to… | Go to |
+| Necesito… | Ir a |
 |---|---|
-| Understand the platform topology / why each piece exists | [`diagrams/architecture.mmd`](diagrams/architecture.mmd) + [`adr/`](adr/) |
-| Deploy from scratch (local or Azure) | [`runbooks/deploy-end-to-end.md`](runbooks/deploy-end-to-end.md) |
-| Fix something broken | [`runbooks/troubleshooting.md`](runbooks/troubleshooting.md) |
-| Scale, drain, back up, roll back | [`runbooks/scaling-and-recovery.md`](runbooks/scaling-and-recovery.md) |
-| Find the right script or placeholder value | [`../scripts/README.md`](../scripts/README.md) |
-| Check the repo's manifests are still valid | [`../tests/README.md`](../tests/README.md) |
-| Study Kubernetes theory for the written exam | [`arquitectura/`](arquitectura/README.md) — 17 lessons, control plane first |
-| Test-drive kubectl commands | [`comandos/`](comandos/README.md) — 9 hands-on sheets |
-| Read the course's use-case notes | [`casos-de-uso/`](casos-de-uso/README.md) |
-| See the deployment tutorials (GitOps, Helm vs Kustomize) | [`despliegue/`](despliegue/README.md) |
-| Re-read the original project plan | [`plan-ecommerce-k8s.md`](plan-ecommerce-k8s.md) |
-| Look at the diagram images | [`img/`](img/) |
+| Entender la topología de la plataforma / por qué existe cada pieza | [`diagrams/architecture.mmd`](diagrams/architecture.mmd) + [`adr/`](adr/) |
+| Desplegar desde cero (local o Azure) | [`runbooks/deploy-end-to-end.md`](runbooks/deploy-end-to-end.md) |
+| Arreglar algo roto | [`runbooks/troubleshooting.md`](runbooks/troubleshooting.md) |
+| Escalar, drenar, respaldar, revertir | [`runbooks/scaling-and-recovery.md`](runbooks/scaling-and-recovery.md) |
+| Encontrar el script correcto o el valor de placeholder | [`../scripts/README.md`](../scripts/README.md) |
+| Verificar que los manifiestos del repo siguen siendo válidos | [`../tests/README.md`](../tests/README.md) |
+| Estudiar teoría de Kubernetes para el examen escrito | [`arquitectura/`](arquitectura/README.md) — 17 clases, plano de control primero |
+| Probar comandos kubectl | [`comandos/`](comandos/README.md) — 9 fichas prácticas |
+| Leer los apuntes de casos de uso del curso | [`casos-de-uso/`](casos-de-uso/README.md) |
+| Ver los tutoriales de despliegue (GitOps, Helm vs Kustomize) | [`despliegue/`](despliegue/README.md) |
+| Releer el plan original del proyecto | [`plan-ecommerce-k8s.md`](plan-ecommerce-k8s.md) |
+| Ver las imágenes de diagramas | [`img/`](img/) |
 
-## The three new pillars (Phase 9)
+## Los tres pilares nuevos (Fase 9)
 
-- **[`adr/`](adr/)** — 10 Architecture Decision Records (MADR-light, one
-  page each) explaining the *why*: AKS single region, Argo CD app-of-apps,
-  Kustomize for apps + Helm for platform charts, Spring Cloud/Eureka,
-  Keycloak, managed data plane, External Secrets → Key Vault, observability
-  stack, PSA restricted + Kyverno, BFF + gateway.
-- **[`runbooks/`](runbooks/)** — operational playbooks: symptom-first
-  troubleshooting, end-to-end deployment (the demo script), scaling/recovery
-  with GitOps rollback.
-- **[`diagrams/`](diagrams/)** — Mermaid diagrams mirroring the real wiring:
-  architecture topology, GitOps sequence (ci/cd.yml → Argo CD → admissions →
-  runtime), and the NetworkPolicy default-deny model.
+- **[`adr/`](adr/)** — 10 Architecture Decision Records (MADR-light, uno
+  por página) que explican el *por qué*: AKS una región, Argo CD app-of-apps,
+  Kustomize para apps + Helm para charts de plataforma, Spring Cloud/Eureka,
+  Keycloak, capa de datos gestionada, External Secrets → Key Vault, stack de
+  observabilidad, PSA restricted + Kyverno, BFF + gateway.
+- **[`runbooks/`](runbooks/)** — guías operacionales: troubleshooting
+ orientado a síntomas, despliegue end-to-end (guion de la demo),
+  escalado/recuperación con rollback de GitOps.
+- **[`diagrams/`](diagrams/)** — diagramas Mermaid que reflejan el cableado
+  real: topología de arquitectura, secuencia de GitOps (ci/cd.yml → Argo CD →
+  admissions → runtime), y el modelo default-deny de NetworkPolicy.
 
-## How the layers connect
+## Cómo se conectan las capas
 
 ```
 GitHub Actions (ci/cd.yml) ──► ACR ──► Argo CD (cluster/base/argocd)
         │                              │
-        └──► cluster/overlays/{dev,staging,prod}  →  kustomize rendered
+        └──► cluster/overlays/{dev,staging,prod}  →  kustomize renderizado
                                             │
-        services/*/k8s/base + overlays/prod ─┘  (17 services, uniform layout)
+        services/*/k8s/base + overlays/prod ─┘  (17 servicios, layout uniforme)
                                             │
-        observability/  security/  data/  ────┘  (Phases 3, 6, 8)
+        observability/  security/  data/  ────┘  (Fases 3, 6, 8)
 ```
 
-- **Source of truth = Git** (ADR-0002): the cluster converges to
-  `cluster/overlays/<env>`; never hand-edit a running cluster.
-- **Placeholders** in `UPPER_CASE` (`acr.azurecr.io`, `<acr>`, `api.<domain>`,
-  `rg-…`, `kv-…`) are audited in `scripts/README.md` and
-  `cluster/base/README.md` — fill them from terraform outputs, never commit
-  real credentials (Gitleaks runs in CI).
-- **Contracts are tested**: `tests/manifests/` proves the 17-service layout,
-  overlay wiring, kustomize renderability and YAML validity before anything
-  hits a cluster.
+- **La fuente de verdad es Git** (ADR-0002): el clúster converge hacia
+  `cluster/overlays/<env>`; nunca editar a mano un clúster en ejecución.
+- **Placeholders** en `MAYÚSCULAS` (`acr.azurecr.io`, `<acr>`, `api.<domain>`,
+  `rg-…`, `kv-…`) están documentados en `scripts/README.md` y
+  `cluster/base/README.md` — completalos con las salidas de terraform, nunca
+  commitees credenciales reales (Gitleaks corre en CI).
+- **Los contratos se testean**: `tests/manifests/` verifica el layout de 17
+  servicios, el cableado de overlays, la renderización con kustomize y la
+  validez YAML antes de que algo toque un clúster.
 
-## Language note
+## Nota sobre idiomas
 
-Theory chapters (`arquitectura/`, `casos-de-uso/`, `comandos/`,
-`despliegue/`) are in Spanish — the exam language for this practical work.
-Operational artifacts added in Phase 9 (ADRs, runbooks, diagrams, scripts,
-tests) are in English, matching the repo's code and CI convention.
+Los capítulos teóricos (`arquitectura/`, `casos-de-uso/`, `comandos/`,
+`despliegue/`) están en español — el idioma del examen para este trabajo
+práctico. Los artefactos operacionales agregados en la Fase 9 (ADRs,
+runbooks, diagramas, scripts, tests) también están en español.

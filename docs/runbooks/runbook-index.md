@@ -1,42 +1,43 @@
-# Runbooks — index
+# Runbooks — índice
 
-Operational playbooks for the e-commerce platform. Each runbook is written
-for the person holding a pager/keyboard at 3 AM — symptom first, fix second,
-with the exact commands. Why-runbooks exist, not how: the ADRs (`../adr/`)
-capture the decisions; these are the operational consequences.
+Guías operacionales para la plataforma e-commerce. Cada runbook está escrito
+para la persona que sostiene el pager/teclado a las 3 AM — síntoma primero,
+fix segundo, con los comandos exactos. Existen los runbooks para el *cómo*,
+no el *por qué*: los ADRs (`../adr/`) capturan las decisiones; estos son las
+consecuencias operacionales.
 
-| Runbook | When to open it |
+| Runbook | Cuándo abrirlo |
 |---|---|
-| [`troubleshooting.md`](troubleshooting.md) | Symptom-driven: CrashLoopBackOff, ImagePullBackOff, TLS, Kyverno/`latest`, PSA restricted, Argo CD OutOfSync, HPA, Eureka. Start here for "something is broken". |
-| [`deploy-end-to-end.md`](deploy-end-to-end.md) | Green-field deployment: local (minikube/kind) and cloud (dev/staging/prod) with the exact scripts, in order. Doubles as the demo script. |
-| [`scaling-and-recovery.md`](scaling-and-recovery.md) | Platform behavior under load and failure: HPA/KEDA, PDB drains, node loss, managed-data backups, GitOps rollback. |
+| [`troubleshooting.md`](troubleshooting.md) | Orientado a síntomas: CrashLoopBackOff, ImagePullBackOff, TLS, Kyverno/`latest`, PSA restricted, Argo CD OutOfSync, HPA, Eureka. Empezá acá si "algo está roto". |
+| [`deploy-end-to-end.md`](deploy-end-to-end.md) | Despliegue green-field: local (minikube/kind) y cloud (dev/staging/prod) con los scripts exactos, en orden. Funciona también como guion de la demo. |
+| [`scaling-and-recovery.md`](scaling-and-recovery.md) | Comportamiento de la plataforma bajo carga y falla: HPA/KEDA, drenajes de PDB, pérdida de nodo, backups de datos gestionados, rollback de GitOps. |
 
-## Quick navigation
+## Navegación rápida
 
-**"A Pod won't start"** → `troubleshooting.md` §1–2 (CrashLoopBackOff,
+**"Un Pod no arranca"** → `troubleshooting.md` §1–2 (CrashLoopBackOff,
 ImagePullBackOff).
 
-**"Certs/HTTPS broken"** → `troubleshooting.md` §3.
+**"Certs/HTTPS rotos"** → `troubleshooting.md` §3.
 
-**"Argo CD red"** → `troubleshooting.md` §6.
+**"Argo CD en rojo"** → `troubleshooting.md` §6.
 
-**"I need to scale / drain / back up"** → `scaling-and-recovery.md` §1–4.
+**"Necesito escalar / drenar / respaldar"** → `scaling-and-recovery.md` §1–4.
 
-**"Roll it back"** → `scaling-and-recovery.md` §5.
+**"Revertirlo"** → `scaling-and-recovery.md` §5.
 
-**"I'm deploying for the first time"** → `deploy-end-to-end.md`.
+**"Estoy desplegando por primera vez"** → `deploy-end-to-end.md`.
 
-**"Which secrets/env values do I fill?"** → `../README.md` (docs index) +
-`scripts/README.md` placeholders table + `../adr/0007`.
+**"¿Qué secretos/valores de env completo?"** → `../README.md` (índice de docs) +
+tabla de placeholders de `scripts/README.md` + `../adr/0007`.
 
-## Conventions shared by all runbooks
+## Convenciones compartidas por todos los runbooks
 
-- Command blocks are PowerShell 5.1 / bash — the helper scripts provide a
-  `.ps1` and a `.sh` twin for each task (`scripts/README.md` matrix).
-- Placeholders in `UPPER_CASE` are documented in `scripts/README.md`
-  (e.g. `<acr>`, `api.<domain>`, `rg-…`) — never commit real values.
-- GitOps rule: **the cluster always converges to Git** (ADR-0002). If a
-  manual `kubectl` change "fixes" something, Argo CD will revert it; fix the
-  repo instead.
-- Kyverno's `disallow-latest-tag` and PSA `restricted` are features, not
-  incidents — the runbooks say where they bite and how to work with them.
+- Los bloques de comandos son PowerShell 5.1 / bash — los scripts helper
+  proveen un gemelo `.ps1` y `.sh` para cada tarea (matriz de `scripts/README.md`).
+- Los placeholders en `MAYÚSCULAS` están documentados en `scripts/README.md`
+  (p. ej. `<acr>`, `api.<domain>`, `rg-…`) — nunca commitees valores reales.
+- Regla de GitOps: **el clúster siempre converge hacia Git** (ADR-0002). Si un
+  cambio manual de `kubectl` "arregla" algo, Argo CD lo va a revertir; arreglá
+  el repo en su lugar.
+- El `disallow-latest-tag` de Kyverno y el PSA `restricted` son features, no
+  incidentes — los runbooks dicen dónde muerden y cómo trabajar con ellos.

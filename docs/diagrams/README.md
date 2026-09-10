@@ -1,30 +1,30 @@
-# diagrams/ — Mermaid diagrams
+# diagrams/ — diagramas Mermaid
 
-Static Mermaid diagrams that mirror the **actual** repo wiring (gitops flows,
-NetworkPolicies, service topology). They are the visual companion to
-`../adr/` (decisions), `../runbooks/` (operate) and `scripts/README.md`
-(pipelines).
+Diagramas Mermaid estáticos que reflejan el cableado **real** del repo
+(flujos de gitops, NetworkPolicies, topología de servicios). Son el
+companion visual de `../adr/` (decisiones), `../runbooks/` (operaciones) y
+`scripts/README.md` (pipelines).
 
-| File | What it shows | Source of truth in the repo |
+| Archivo | Qué muestra | Fuente de verdad en el repo |
 |---|---|---|
-| [`architecture.mmd`](architecture.mmd) | Full topology: ingress → gateway/bff → 17 services, data plane, observability, Argo CD | `cluster/overlays/*`, `services/*/k8s/base`, `observability/`, `security/` |
-| [`gitops-flow.mmd`](gitops-flow.mmd) | Sequence: PR → CI gates → ACR push → newTag rewrite → Argo CD sync → admission → runtime | `.github/workflows/{ci,cd}.yml`, `cluster/base/argocd/` |
-| [`network-policies.mmd`](network-policies.mmd) | Default-deny model + per-service ingress/egress allowances | `security/network-policies/`, `services/*/k8s/base/networkpolicy.yaml` |
+| [`architecture.mmd`](architecture.mmd) | Topología completa: ingress → gateway/bff → 17 servicios, capa de datos, observabilidad, Argo CD | `cluster/overlays/*`, `services/*/k8s/base`, `observability/`, `security/` |
+| [`gitops-flow.mmd`](gitops-flow.mmd) | Secuencia: PR → CI gates → push a ACR → rewrite de newTag → sync de Argo CD → admission → runtime | `.github/workflows/{ci,cd}.yml`, `cluster/base/argocd/` |
+| [`network-policies.mmd`](network-policies.mmd) | Modelo default-deny + permisos de ingress/egress por servicio | `security/network-policies/`, `services/*/k8s/base/networkpolicy.yaml` |
 
-## How to render
+## Cómo renderizar
 
-- **Quick**: paste the file content into <https://mermaid.live> (use the
-  "?" code block style shown in the files).
-- **Local render to PNG/SVG**: `npx -y @mermaid-js/mermaid-cli -i
-  architecture.mmd -o architecture.svg`. Requires Node 18+ — one-time only,
-  the `.mmd` files are the checked-in source.
-- **GitHub**: `.mmd` renders natively in Markdown code fences; the README
-  links keep the raw files browsable.
+- **Rápido**: pegá el contenido del archivo en <https://mermaid.live> (usá
+  el estilo de code block "?" que se muestra en los archivos).
+- **Render local a PNG/SVG**: `npx -y @mermaid-js/mermaid-cli -i
+  architecture.mmd -o architecture.svg`. Requiere Node 18+ — solo una vez,
+  los archivos `.mmd` son el fuente committed.
+- **GitHub**: `.mmd` se renderiza nativamente en code fences de Markdown; los
+  links del README mantienen los archivos crudos navegables.
 
-## Keeping them honest
+## Mantenerlos honestos
 
-These diagrams are **contracts with the repo**, same spirit as
-`tests/manifests/`: if a NetworkPolicy edge changes, update
-`network-policies.mmd` in the same commit. The `scripts/README.md`
-conventions (placeholders `<acr>`, `api.<domain>`, `rg-…`) apply here too —
-no real credentials, no invented hosts.
+Estos diagramas son **contratos con el repo**, mismo espíritu que
+`tests/manifests/`: si cambia un borde de NetworkPolicy, actualizá
+`network-policies.mmd` en el mismo commit. Las convenciones de
+`scripts/README.md` (placeholders `<acr>`, `api.<domain>`, `rg-…`) aplican
+acá también — no credenciales reales, no hosts inventados.

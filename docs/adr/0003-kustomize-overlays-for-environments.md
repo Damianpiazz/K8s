@@ -1,52 +1,57 @@
-# ADR-0003: Kustomize overlays for the application layer; Helm for platform charts
+# ADR-0003: Kustomize overlays para la capa de aplicación; Helm para charts de plataforma
 
-- **Status**: accepted
-- **Date**: 2026-09-07
-- **Deciders**: platform team
+- **Estado**: aceptado
+- **Fecha**: 2026-09-07
+- **Decisores**: equipo de plataforma
 
-## Context
+## Contexto
 
-Two templating layers coexist in the platform: **platform components**
-(ingress-nginx, cert-manager, external-secrets, kyverno, keda,
-kube-prometheus-stack) are installed from upstream Helm charts with many
-values; the **17 services** are plain Kubernetes manifests that differ per
-environment only by a few small patches (replicas, resources, image tag).
-Using Helm for the services too would add chart boilerplate to 17 repos
-without buying real value.
+Dos capas de templating coexisten en la plataforma: los **componentes de
+plataforma** (ingress-nginx, cert-manager, external-secrets, kyverno, keda,
+kube-prometheus-stack) se instalan desde charts Helm upstream con muchos
+valores; los **17 servicios** son manifiestos Kubernetes plain que solo
+difieren por ambiente con unos pocos parches (réplicas, recursos, tag de
+imagen). Usar Helm también para los servicios agregaría boilerplate de charts
+a 17 repos sin aportar valor real.
 
-## Decision
+## Decisión
 
-- **Helm** is reserved for platform charts, installed through Argo CD
-  Applications (`cluster/base/argocd/applications/*.yaml` point at chart
-  repositories) — the "platform layer" of `cluster/base`.
-- **Kustomize** is the tool for everything first-party:
-  - `cluster/base` + `cluster/overlays/{dev,staging,prod}` for the platform
-    resources (ClusterIssuer, ClusterSecretStore, env-config, namespaces);
-  - `services/<svc>/k8s/base` + `services/<svc>/k8s/overlays/prod` for each
-    service (uniform layout per `services/README.md`).
-- Overlays layering: `dev`/`staging` reuse each service's `k8s/base`,
-  `prod` uses the thin `k8s/overlays/prod` (replicas + resources patch).
-- The CD pipeline mutates environment overlays by rewriting `images[].newTag`
-  via `yq` — a kustomize-native, declarative contract.
+- **Helm** está reservado para los charts de plataforma, instalados a través
+  de Applications de Argo CD (`cluster/base/argocd/applications/*.yaml`
+  apuntan a repositorios de charts) — la "capa de plataforma" de
+  `cluster/base`.
+- **Kustomize** es la herramienta para todo lo first-party:
+  - `cluster/base` + `cluster/overlays/{dev,staging,prod}` para los recursos
+    de plataforma (ClusterIssuer, ClusterSecretStore, env-config, namespaces);
+  - `services/<svc>/k8s/base` + `services/<svc>/k8s/overlays/prod` para cada
+    servicio (layout uniforme según `services/README.md`).
+- Overlays en capas: `dev`/`staging` reusan el `k8s/base` de cada servicio,
+  `prod` usa el overlay delgado `k8s/overlays/prod` (parche de réplicas +
+  recursos).
+- El pipeline de CD muta los overlays de ambiente reescribiendo
+  `images[].newTag` via `yq` — un contrato declarativo nativo de kustomize.
 
-## Consequences
+## Consecuencias
 
-- Uniform 17-service layout → the checks in `tests/manifests/test-service-contract.py`
-  can enforce the whole fleet from one test.
-- Overlay `issuer-default.yaml` per env lets Let's Encrypt staging vs prod
-  switch by environment without patching base (documented in
+- Layout uniforme de 17 servicios → los chequeos en
+  `tests/manifests/test-service-contract.py` pueden forzar la norma para
+  toda la flota desde un solo test.
+- El `issuer-default.yaml` por overlay de ambiente permite cambiar entre Let's
+  Encrypt staging y prod por ambiente sin parchear el base (documentado en
   `cluster/overlays/README.md`).
-- Plain YAML means the repo is reviewable without chart templating knowledge;
-  braces never appear in `resources:` paths.
-- Cost: per-service overlays only exist for prod; dev/staging share base —
-  a deliberate three-env asymmetry, verified by `test-overlay-wiring.py`.
+- YAML plain significa que el repo es revisable sin conocimiento de
+  templating de charts; las llaves nunca aparecen en paths de `resources:`.
+- Costo: los overlays por servicio solo existen para prod; dev/staging
+  comparten base — una asimetría de tres ambientes deliberada, verificada por
+  `test-overlay-wiring.py`.
 
-## Alternatives considered
+## Alternativas consideradas
 
-- **Helm for services too**: uniform tooling, but 17 chart.yaml + values.yaml
-  trees to maintain and no benefit for the small per-env delta; the CD
-  `newTag` rewrite would also need `helm upgrade` semantics per service.
-- **Helmfile for everything**: non-GitOps drift source; documented as the
-  comparison path in `cluster/base/helmfile.yaml` only.
-- **Plain kubectl apply, no templating**: would duplicate the per-env
-  differences 3× across 17 services — rejected.
+- **Helm también para servicios**: tooling uniforme, pero 17 árboles de
+  chart.yaml + values.yaml para mantener y sin beneficio para el delta por
+  ambiente tan pequeño; el rewrite de `newTag` del CD también necesitaría
+  semántica de `helm upgrade` por servicio.
+- **Helmfile para todo**: fuente de drift no-GitOps; documentado solo como
+  ruta de comparación en `cluster/base/helmfile.yaml`.
+- **kubectl apply directo, sin templating**: duplicaría las diferencias por
+  ambiente 3× en 17 servicios — descartado.

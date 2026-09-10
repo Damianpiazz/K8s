@@ -1,53 +1,58 @@
-# ADR-0004: Spring Cloud + Eureka for service discovery (and Config Server)
+# ADR-0004: Spring Cloud + Eureka para service discovery (y Config Server)
 
-- **Status**: accepted
-- **Date**: 2026-09-07
-- **Deciders**: platform team
+- **Estado**: aceptado
+- **Fecha**: 2026-09-07
+- **Decisores**: equipo de plataforma
 
-## Context
+## Contexto
 
-17 Spring Boot 3.3.x services must find each other without hard-coded
-addresses: the api-gateway routes to business services, and services resolve
-each other's instances inside the ecommerce namespace. The reference repo
-(walidhabbach) ships Eureka + Spring Cloud Config, and the services already
-import `spring-cloud-starter-netflix-eureka-client` (services/README.md
-convention). Spring Cloud 2023.0.x is the BOM in use.
+17 servicios Spring Boot 3.3.x deben encontrarse entre sí sin direcciones
+hardcodeadas: el api-gateway enruta hacia los servicios de negocio, y los
+servicios resuelven las instancias de otros dentro del namespace ecommerce.
+El repo de referencia (walidhabbach) trae Eureka + Spring Cloud Config, y los
+servicios ya importan `spring-cloud-starter-netflix-eureka-client` (convención
+de `services/README.md`). Spring Cloud 2023.0.x es el BOM en uso.
 
-## Decision
+## Decisión
 
-- **Eureka** (`discovery-service`, port 8761) as the service registry:
-  services register via the eureka client and resolve peers by logical name.
-- **Spring Cloud Config** (`config-service`, port 8888) as the central
-  configuration server — env-agnostic defaults come from it; per-env
-  overrides ride the `ecommerce-env-config` ConfigMap (envFrom) instead of
-  config-server profiles.
-- The api-gateway (Spring Cloud Gateway) uses discovery to route
-  (`lb://<service>` style lookups), so a new service needs no gateway route
-  table change for name resolution.
-- Both infrastructure services are first-class citizens of the uniform
-  layout: `k8s/base` + `k8s/overlays/prod` + HPA/PDB/NetworkPolicy.
+- **Eureka** (`discovery-service`, puerto 8761) como registro de servicios:
+  los servicios se registran vía el cliente de Eureka y resuelven pares por
+  nombre lógico.
+- **Spring Cloud Config** (`config-service`, puerto 8888) como servidor de
+  configuración central — los defaults agnósticos a ambiente vienen de él;
+  los overrides por ambiente viajan en el ConfigMap `ecommerce-env-config`
+  (envFrom) en vez de perfiles de config-server.
+- El api-gateway (Spring Cloud Gateway) usa discovery para enrutar
+  (búsquedas estilo `lb://<service>`), así que un servicio nuevo no necesita
+  cambios en la tabla de rutas del gateway para resolución de nombres.
+- Ambos servicios de infraestructura son ciudadanos de primera clase del
+  layout uniforme: `k8s/base` + `k8s/overlays/prod` + HPA/PDB/NetworkPolicy.
 
-## Consequences
+## Consecuencias
 
-- Services reach peers via stable logical names even when Pod IPs change —
-  NetworkPolicies allow ecommerce peer egress by label, so discovery traffic
-  flows (catalog-svc policy comment: `config-service (:8888),
+- Los servicios alcanzan sus pares vía nombres lógicos estables incluso
+  cuando las IPs de los Pods cambian — las NetworkPolicies permiten egress
+  entre pares de ecommerce por label, así que el tráfico de discovery fluye
+  (comentario de política en catalog-svc: `config-service (:8888),
   discovery-service (:8761)`).
-- Eureka is a stateful-ish registry: on restart it rebuilds from
-  heartbeats; the deployment keeps 1 replica in dev and 3 in prod (overlay).
-- One more moving part to watch in `troubleshooting.md` ("Eureka not
-  registering" section) and one more dependency for each service to start
-  before joining the registry.
-- Config-on-Git vs ConfigMap: the project deliberately uses ConfigMaps for
-  env-specific settings so secrets and env values stay in GitOps artifacts,
-  not in a config server's backend.
+- Eureka es un registro stateful-ish: al reiniciar se reconstruye desde
+  heartbeats; el deployment mantiene 1 réplica en dev y 3 en prod (overlay).
+- Una pieza más para monitorear en `troubleshooting.md` (sección "Eureka no
+  se registra") y una dependencia más para que cada servicio arranque antes
+  de unirse al registro.
+- Config-on-Git vs ConfigMap: el proyecto usa deliberadamente ConfigMaps para
+  configuraciones específicas de ambiente para que los secretos y valores de
+  ambiente permanezcan en artefactos de GitOps, no en el backend de un
+  servidor de configuración.
 
-## Alternatives considered
+## Alternativas consideradas
 
-- **Kubernetes native DNS only**: `svc.namespace.svc.cluster.local` works
-  but gives no instance-level health or LB-aware selection from the Spring
-  side; kept as the fallback mental model.
-- **Consul**: same job, extra operator (ACL tokens, gossip) with no
-  advantage for a single-region TP.
-- **istio (service mesh)**: real service discovery + mTLS, but far too heavy
-  for the demo scope; PSA/NetworkPolicies already cover the isolation story.
+- **Solo DNS nativo de Kubernetes**: `svc.namespace.svc.cluster.local`
+  funciona pero no brinda salud a nivel de instancia ni selección
+  consciente de LB del lado de Spring; se mantiene como modelo mental de
+  fallback.
+- **Consul**: mismo trabajo, operador extra (tokens ACL, gossip) sin
+  ventaja para un TP de una sola región.
+- **istio (service mesh)**: service discovery real + mTLS, pero demasiado
+  pesado para el alcance de la demo; PSA/NetworkPolicies ya cubren la
+  historia de aislamiento.

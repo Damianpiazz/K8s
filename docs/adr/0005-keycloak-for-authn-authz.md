@@ -1,51 +1,54 @@
-# ADR-0005: Keycloak for authentication and authorization (auth service)
+# ADR-0005: Keycloak para autenticación y autorización (auth service)
 
-- **Status**: accepted
-- **Date**: 2026-09-07
-- **Deciders**: platform team
+- **Estado**: aceptado
+- **Fecha**: 2026-09-07
+- **Decisores**: equipo de plataforma
 
-## Context
+## Contexto
 
-Users (browser → api-gateway) need authentication and token-based
-authorization across the platform. The `auth` service is a first-class
-deployment in the uniform layout (`services/auth/k8s/base/deployment.yaml`),
-and the reference repo carries a Keycloak-style auth component. The gateway
-must validate bearer tokens per route without every service re-implementing
-JWT verification.
+Los usuarios (navegador → api-gateway) necesitan autenticación y
+autorización basada en tokens a través de la plataforma. El servicio `auth`
+es un deployment de primera clase en el layout uniforme
+(`services/auth/k8s/base/deployment.yaml`), y el repo de referencia trae un
+componente de auth estilo Keycloak. El gateway debe validar bearer tokens por
+ruta sin que cada servicio reimplemente verificación JWT.
 
-## Decision
+## Decisión
 
-- **Keycloak** runs as the `auth` service (image `acr.azurecr.io/auth`,
-  container port 8080, admin bootstrap env
-  `KEYCLOAK_ADMIN`/`KEYCLOAK_ADMIN_PASSWORD` sourced from the
-  `keycloak-admin-credentials` Secret).
-- Admin credentials come from a placeholder Secret today; the production
-  path is External Secrets → Azure Key Vault (ADR-0007) so the console
-  password is never in Git.
-- The **api-gateway** terminates token validation (JWT at the edge): routes
-  are protected at the gateway, services behind the ecommerce peer policy
-  trust the gateway (matching the per-service NetworkPolicy ingress rule
-  "only the api-gateway may call the catalog API").
+- **Keycloak** corre como el servicio `auth` (imagen `acr.azurecr.io/auth`,
+  puerto de contenedor 8080, env de bootstrap admin
+  `KEYCLOAK_ADMIN`/`KEYCLOAK_ADMIN_PASSWORD` obtenidos del Secret
+  `keycloak-admin-credentials`).
+- Las credenciales de admin vienen de un Secret placeholder hoy; el camino de
+  producción es External Secrets → Azure Key Vault (ADR-0007) para que la
+  contraseña de consola nunca esté en Git.
+- El **api-gateway** termina la validación de tokens (JWT en el edge): las
+  rutas se protegen en el gateway, los servicios detrás de la política de
+  pares de ecommerce confían en el gateway (coincide con la regla de ingress
+  de NetworkPolicy por servicio "solo el api-gateway puede llamar a la API de
+  catalog").
 
-## Consequences
+## Consecuencias
 
-- Single identity provider: realms, clients and roles configure once and
-  every service inherits the story.
-- The auth Pod must stay healthy or every login path fails — it gets the
-  same HPA/PDB/probes treatment as any other service, and
-  `troubleshooting.md` covers its CrashLoopBackOff causes
-  (misconfigured admin secret, missing DB/backing store).
-- Keycloak in `start-dev` mode is demo-convenient but not production
-  hardened; the prod overlay should switch to production mode + managed
-  Postgres (ADR-0006) before any real traffic.
+- Único identity provider: realms, clients y roles se configuran una vez y
+  cada servicio hereda la historia.
+- El Pod de auth debe mantenerse sano o falla cualquier ruta de login — recibe
+  el mismo tratamiento de HPA/PDB/probes que cualquier otro servicio, y
+  `troubleshooting.md` cubre sus causas de CrashLoopBackOff (secret de admin
+  mal configurado, DB/backing store ausente).
+- Keycloak en modo `start-dev` es conveniente para la demo pero no está
+  endurecido para producción; el overlay de prod debería cambiar al modo de
+  producción + Postgres gestionado (ADR-0006) antes de tráfico real.
 
-## Alternatives considered
+## Alternativas consideradas
 
-- **Custom Spring Security + JWT service**: full control, but re-implements
-  realms/clients/roles that Keycloak ships; more code to demo, less
-  impressive.
-- **Azure AD B2C / Entra ID**: the natural managed choice for a real Azure
-  product (entra-specific flows, cost tiers) but it would tie the local
-  minikube/kind demo to Azure connectivity — rejected for TP portability.
-- **No gateway auth (per-service)**: every service would need the same JWT
-  filter; rejected — that is precisely the gateway's job (ADR-0010).
+- **Servicio Spring Security + JWT custom**: control total, pero reimplementa
+  realms/clients/roles que Keycloak ya trae; más código para demostrar, menos
+  impresionante.
+- **Azure AD B2C / Entra ID**: la elección gestionada natural para un
+  producto Azure real (flujos específicos de entra, tiers de costo) pero
+  ataría la demo local de minikube/kind a la conectividad de Azure —
+  descartado por portabilidad del TP.
+- **Sin auth en el gateway (por servicio)**: cada servicio necesitaría el
+  mismo filtro JWT; descartado — ese es exactamente el trabajo del gateway
+  (ADR-0010).

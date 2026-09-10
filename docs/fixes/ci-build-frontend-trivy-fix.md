@@ -1,42 +1,42 @@
-# CI Fix: Build Frontend + Trivy Filesystem Scan
+# Fix de CI: Build Frontend + Trivy Filesystem Scan
 
-**Date:** 2026-09-10
+**Fecha:** 2026-09-10
 **Run:** [GitHub Actions #34438707191](https://github.com/Damianpiazz/K8s/actions/runs/34438707191)
 **Commit:** `7894d6c`
 
 ---
 
-## Summary
+## Resumen
 
-Two CI jobs failed on the latest run: **Build frontend** and **Trivy filesystem scan**. Both issues were in the `services/frontend/` service. Root causes identified and fixed.
+Dos jobs de CI fallaron en el último run: **Build frontend** y **Trivy filesystem scan**. Ambos problemas estaban en el servicio `services/frontend/`. Causas raíz identificadas y corregidas.
 
 ---
 
 ## Error 1: Build Frontend
 
-### Symptom
+### Síntoma
 
 ```
 ERROR: failed to build: failed to solve: process "/bin/sh -c addgroup -S appgroup && adduser -S appuser -u 1000" did not complete successfully: exit code: 1
 adduser: uid '1000' in use
 ```
 
-### Root Cause
+### Causa raíz
 
-The Dockerfile (`services/frontend/Dockerfile`, line 29) created a custom user `appuser` with UID 1000:
+El Dockerfile (`services/frontend/Dockerfile`, línea 29) creaba un usuario custom `appuser` con UID 1000:
 
 ```dockerfile
 RUN addgroup -S appgroup && adduser -S appuser -u 1000
 ```
 
-The base image `node:22-alpine` already ships with a `node` user that occupies UID 1000. Alpine's `adduser` refuses to create a second user with the same UID, causing the build to fail.
+La imagen base `node:22-alpine` ya viene con un usuario `node` que ocupa el UID 1000. El `adduser` de Alpine se niega a crear un segundo usuario con el mismo UID, causando el fallo del build.
 
 ### Fix
 
-Removed the custom user creation entirely. The runtime stage now uses the built-in `node` user (UID 1000) that already exists in `node:22-alpine`:
+Se removió la creación del usuario custom por completo. El stage de runtime ahora usa el usuario `node` built-in (UID 1000) que ya existe en `node:22-alpine`:
 
 ```dockerfile
-# Before
+# Antes
 RUN addgroup -S appgroup && adduser -S appuser -u 1000
 WORKDIR /app
 COPY --from=build /workspace/.next/standalone ./
@@ -44,7 +44,7 @@ COPY --from=build /workspace/.next/static ./.next/static
 COPY --from=build /workspace/public ./public
 USER appuser
 
-# After
+# Después
 WORKDIR /app
 COPY --from=build /workspace/.next/standalone ./
 COPY --from=build /workspace/.next/static ./.next/static
@@ -52,19 +52,19 @@ COPY --from=build /workspace/public ./public
 USER node
 ```
 
-**Why this is safe:** The `node` user in `node:22-alpine` has UID 1000, same home directory convention, and is the officially supported non-root user for Node.js containers. Using it avoids the UID conflict and follows Alpine/Node.js best practices.
+**Por qué es seguro:** el usuario `node` en `node:22-alpine` tiene UID 1000, la misma convención de home directory, y es el usuario no-root oficialmente soportado para contenedores Node.js. Usarlo evita el conflicto de UID y sigue las buenas prácticas de Alpine/Node.js.
 
 ---
 
 ## Error 2: Trivy Filesystem Scan
 
-### Symptom
+### Síntoma
 
-Trivy found **17 HIGH severity vulnerabilities** (0 CRITICAL) in `services/frontend/pnpm-lock.yaml`, all with available fixes. The scan exits with code 1 due to `--exit-code 1 --severity CRITICAL,HIGH`.
+Trivy encontró **17 vulnerabilidades HIGH** (0 CRITICAL) en `services/frontend/pnpm-lock.yaml`, todas con fixes disponibles. El scan sale con código 1 por el flag `--exit-code 1 --severity CRITICAL,HIGH`.
 
-### Vulnerable Packages
+### Paquetes vulnerables
 
-| Package | CVE(s) | Installed | Fixed | Type |
+| Paquete | CVE(s) | Instalado | Fix | Tipo |
 |---|---|---|---|---|
 | brace-expansion | CVE-2026-13149, CVE-2026-14257, CVE-2026-69152 | 5.0.6 | >=5.0.9 | DoS |
 | browserslist | CVE-2026-73088, CVE-2026-73089 | 4.28.1 | >=4.28.7 | Prototype pollution / DoS |
@@ -72,19 +72,19 @@ Trivy found **17 HIGH severity vulnerabilities** (0 CRITICAL) in `services/front
 | ip-address | CVE-2026-69192 | 10.2.0 | >=10.3.1 | SSRF |
 | js-yaml | CVE-2026-59869, CVE-2026-84375, GHSA-5p4m-2wfm-xmqj | 4.2.0 | >=4.3.2 | DoS |
 | nanoid | CVE-2026-67213 | 3.3.16 | >=3.3.18 | DoS |
-| sharp | GHSA-rgj7-g3m4-5g8c | 0.35.3 | >=0.35.4 | libheif vulnerabilities |
+| sharp | GHSA-rgj7-g3m4-5g8c | 0.35.3 | >=0.35.4 | vuln de libheif |
 
 ### Fix
 
-Ran `pnpm update` to resolve all vulnerable transitive dependencies to their patched versions:
+Se corrió `pnpm update` para resolver todas las dependencias transitivas vulnerables a sus versiones parcheadas:
 
 ```bash
 pnpm update brace-expansion browserslist fast-uri ip-address js-yaml nanoid sharp
 ```
 
-**Resolved versions after fix:**
+**Versiones resueltas después del fix:**
 
-| Package | Before | After |
+| Paquete | Antes | Después |
 |---|---|---|
 | brace-expansion | 5.0.6 | 5.0.9 |
 | browserslist | 4.28.1 | 4.28.9 |
@@ -94,22 +94,22 @@ pnpm update brace-expansion browserslist fast-uri ip-address js-yaml nanoid shar
 | nanoid | 3.3.16 | 3.3.18 |
 | sharp | 0.35.3 | 0.35.4 |
 
-All are transitive dependencies (none direct in `package.json`), so the update is safe and backward-compatible.
+Todas son dependencias transitivas (ninguna es directa en `package.json`), así que el update es seguro y backward-compatible.
 
 ---
 
-## Files Changed
+## Archivos cambiados
 
-| File | Change |
+| Archivo | Cambio |
 |---|---|
-| `services/frontend/Dockerfile` | Removed custom user creation, use built-in `node` user |
-| `services/frontend/pnpm-lock.yaml` | Updated 7 vulnerable transitive dependencies |
+| `services/frontend/Dockerfile` | Removida la creación de usuario custom, se usa el usuario `node` built-in |
+| `services/frontend/pnpm-lock.yaml` | Actualizadas 7 dependencias transitivas vulnerables |
 
 ---
 
-## Verification
+## Verificación
 
-- Dockerfile builds successfully with the `node` user (no UID conflict)
-- `pnpm-lock.yaml` passes supply-chain policy verification
-- All 17 previously flagged CVEs resolve to patched versions
-- No direct dependency changes in `package.json`
+- El Dockerfile construye exitosamente con el usuario `node` (sin conflicto de UID)
+- `pnpm-lock.yaml` pasa la verificación de política supply-chain
+- Los 17 CVEs previamente marcados se resuelven a versiones parcheadas
+- Sin cambios de dependencias directas en `package.json`

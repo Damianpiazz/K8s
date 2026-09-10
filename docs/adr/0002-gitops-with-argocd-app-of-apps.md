@@ -1,51 +1,55 @@
-# ADR-0002: GitOps with Argo CD — app-of-apps pattern
+# ADR-0002: GitOps con Argo CD — patrón app-of-apps
 
-- **Status**: accepted
-- **Date**: 2026-09-07
-- **Deciders**: platform team
+- **Estado**: aceptado
+- **Fecha**: 2026-09-07
+- **Decisores**: equipo de plataforma
 
-## Context
+## Contexto
 
-The repo must be the single source of truth for the platform and the 17
-services. CI/CD was already built in Phase 1 with a `GITOPS` variable that
-selects between an Argo CD sync (`GITOPS == 'argocd'`) and a direct
-`kubectl apply` fallback — the GitOps controller choice had to match that
-pipeline and be demonstrable in a lecture demo.
+El repo debe ser la única fuente de verdad para la plataforma y los 17
+servicios. El CI/CD ya estaba construido en la Fase 1 con una variable
+`GITOPS` que selecciona entre un sync de Argo CD (`GITOPS == 'argocd'`) y un
+fallback directo con `kubectl apply` — la elección del controlador GitOps
+tenía que coincidir con ese pipeline y poder demostrarse en una clase
+magistral.
 
-## Decision
+## Decisión
 
-- **Argo CD** as the GitOps controller, in the **app-of-apps** pattern:
-  `cluster/base/argocd/app-of-apps.yaml` (root Application `ecommerce-apps`)
-  reconciles the 7 child Applications under
+- **Argo CD** como controlador GitOps, con el patrón **app-of-apps**:
+  `cluster/base/argocd/app-of-apps.yaml` (Application raíz `ecommerce-apps`)
+  reconcilia los 7 Application hijos bajo
   `cluster/base/argocd/applications/` (ingress-nginx, cert-manager,
   external-dns, external-secrets, kyverno, keda, kube-prometheus-stack).
-- Every Application runs `automated: { prune: true, selfHeal: true }` —
-  drift is corrected, deletions in Git propagate.
-- Bootstrap order is explicit and documented in `cluster/base/README.md`
-  (install Argo CD → apply the Applications → apply the remaining
-  cluster-scoped kustomization).
-- The CD pipeline (`cd.yml`) syncs `ecommerce-<env>` after pushing images,
-  keeping Argo CD as the delivery agent.
+- Cada Application ejecuta `automated: { prune: true, selfHeal: true }` — las
+  diferencias se corrigen automáticamente, las eliminaciones en Git se propagan.
+- El orden de bootstrap es explícito y está documentado en
+  `cluster/base/README.md` (instalar Argo CD → aplicar las Applications →
+  aplicar la kustomization restante a nivel de clúster).
+- El pipeline de CD (`cd.yml`) sincroniza `ecommerce-<env>` después de
+  pushear las imágenes, manteniendo a Argo CD como agente de despliegue.
 
-## Consequences
+## Consecuencias
 
-- Git is the single source of truth: rollback = revert a commit (see
+- Git es la única fuente de verdad: rollback = revertir un commit (ver
   `docs/runbooks/scaling-and-recovery.md`).
-- The UI gives the professor a visible reconcile loop for the demo
-  (`bootstrap-argocd.ps1` prints the initial admin password + port-forward).
-- App-of-apps adds a bootstrap ordering concern (charts must install their
-  CRDs before cluster-scoped resources reference them) — documented in
-  `cluster/base/README.md` with the symptom `no matches for kind: ClusterPolicy`.
-- Argo CD does not manage itself (installed once by bootstrap) — accepted.
+- La UI le da al profesor un loop de reconciliación visible para la demo
+  (`bootstrap-argocd.ps1` imprime la contraseña inicial de admin +
+  port-forward).
+- App-of-apps agrega una preocupación de orden de bootstrap (los charts
+  deben instalar sus CRDs antes de que los recursos a nivel de clúster los
+  referencien) — documentado en `cluster/base/README.md` con el síntoma
+  `no matches for kind: ClusterPolicy`.
+- Argo CD no se gestiona a sí mismo (se instala una vez en el bootstrap) —
+  aceptado.
 
-## Alternatives considered
+## Alternativas consideradas
 
-- **Flux CD**: equally GitOps-correct, but the Phase 1 pipeline was already
-  built around Argo CD (`argoproj/argo-cd-action`), and the reference repo
-  uses Argo CD — consistency wins.
-- **kubectl apply only (no controller)**: simpler but loses drift
-  correction and the UI demo; kept only as `GITOPS != 'argocd'` fallback in
-  `cd.yml` and as `scripts/deploy/apply-overlay.ps1`.
-- **helmfile**: documented in `cluster/base/helmfile.yaml` as a non-GitOps
-  comparison path only — deliberately not the primary flow (mixing both for
-  the same component conflicts, e.g. external-dns).
+- **Flux CD**: igualmente correcto en GitOps, pero el pipeline de la Fase 1
+  ya estaba construido alrededor de Argo CD (`argoproj/argo-cd-action`), y el
+  repo de referencia usa Argo CD — la consistencia gana.
+- **Solo kubectl apply (sin controlador)**: más simple pero pierde la
+  corrección de drift y la demo de la UI; se mantiene solo como fallback
+  `GITOPS != 'argocd'` en `cd.yml` y como `scripts/deploy/apply-overlay.ps1`.
+- **helmfile**: documentado en `cluster/base/helmfile.yaml` solo como ruta de
+  comparación no-GitOps — deliberadamente no es el flujo principal (mezclar
+  ambos para el mismo componente genera conflictos, p. ej. external-dns).

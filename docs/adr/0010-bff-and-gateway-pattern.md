@@ -1,56 +1,58 @@
-# ADR-0010: BFF + API Gateway pattern (api-gateway + bff-web)
+# ADR-0010: Patrón BFF + API Gateway (api-gateway + bff-web)
 
-- **Status**: proposed
-- **Date**: 2026-09-07
-- **Deciders**: platform team
+- **Estado**: propuesto
+- **Fecha**: 2026-09-07
+- **Decisores**: equipo de plataforma
 
-## Context
+## Contexto
 
-External traffic enters the platform through ingress-nginx into the
-`api-gateway` deployment (Spring Cloud Gateway, port 8080, the only ingress
-with a public host `api.<domain>`). The business services (catalog, cart,
-order, …) are behind it. A second front-facing tier exists: `bff-web`, a
-backend-for-frontend that composes and shapes responses for web clients. The
-question is where cross-cutting concerns and client-specific composition
-live.
+El tráfico externo entra a la plataforma a través de ingress-nginx hacia el
+deployment `api-gateway` (Spring Cloud Gateway, puerto 8080, el único ingress
+con host público `api.<domain>`). Los servicios de negocio (catalog, cart,
+order, …) están detrás. Existe un segundo tier front-facing: `bff-web`, un
+backend-for-frontend que compone y modela respuestas para clientes web. La
+pregunta es dónde viven las preocupaciones cross-cutting y la composición
+específica por cliente.
 
-## Decision
+## Decisión
 
-- **api-gateway = the edge gateway**: TLS termination at the ingress,
-  JWT validation (ADR-0005), CORS, routing to services by discovery name
-  (ADR-0004), and the NetworkPolicy trust boundary (only ingress-nginx may
-  reach it; it may reach all ecommerce peers).
-- **bff-web = the composition layer for browser/SPA clients**: aggregates
-  calls to several services into one client-friendly payload, so the SPA
-  does one round trip and never talks to business services directly.
-- Both are full citizens of the uniform service layout (k8s/base + prod
-  overlay + HPA/PDB/NetworkPolicy + ServiceMonitor); bff-web routes via
-  discovery like any other peer.
-- The browser → bff-web → services path is the **recommended** call flow for
-  UI traffic; service-to-service communication stays direct (no bff hop).
+- **api-gateway = el gateway edge**: terminación TLS en el ingress, validación
+  JWT (ADR-0005), CORS, ruteo hacia servicios por nombre de discovery
+  (ADR-0004), y el límite de confianza de NetworkPolicy (solo ingress-nginx
+  puede alcanzarlo; él puede alcanzar todos los pares de ecommerce).
+- **bff-web = la capa de composición para clientes browser/SPA**: agrega
+  llamadas a varios servicios en un payload amigable para el cliente, así el
+  SPA hace un solo round trip y nunca habla directo con los servicios de
+  negocio.
+- Ambos son ciudadanos completos del layout uniforme de servicios (k8s/base +
+  overlay de prod + HPA/PDB/NetworkPolicy + ServiceMonitor); bff-web enruta
+  via discovery como cualquier otro peer.
+- El camino browser → bff-web → servicios es el flujo de llamadas
+  **recomendado** para tráfico de UI; la comunicación servicio-a-servicio
+  sigue siendo directa (sin hop del bff).
 
-## Consequences
+## Consecuencias
 
-- One extra hop for web traffic (bff aggregates it away at the API level —
-  net win for chatty UIs).
-- The gateway stays thin and generic; client-specific shaping moves to the
-  bff, which can evolve per client later (mobile bff, partner bff) without
-  touching the gateway.
-- Two more deployments to secure/observe — both follow the exact same
-  contract, so the tooling (tests, dashboards) applies unchanged.
-- bff-web must replicate the gateway's auth story (or trust the gateway
-  header) — the JWT propagation design between gateway and bff is still to
-  be finalized (open point for the implementation phase).
+- Un hop extra para el tráfico web (el bff lo agrega a nivel de API — ganancia
+  neta para UIs chatty).
+- El gateway se mantiene delgado y genérico; el modelado específico de cliente
+  se mueve al bff, que puede evolucionar por cliente más adelante (bff mobile,
+  bff partner) sin tocar el gateway.
+- Dos deployments más para asegurar/observar — ambos siguen exactamente el
+  mismo contrato, así que el tooling (tests, dashboards) aplica sin cambios.
+- bff-web debe replicar la historia de auth del gateway (o confiar en el
+  header del gateway) — el diseño de propagación JWT entre gateway y bff
+  todavía está por finalizar (punto abierto para la fase de implementación).
 
-## Alternatives considered
+## Alternativas consideradas
 
-- **Gateway-only (no bff)**: simplest (9 services reachable directly), but
-  every UI change forces gateway route/aggregation changes and the SPA does
-  N round trips — rejected as the primary path.
-- **GraphQL gateway**: schema-driven aggregation is elegant but adds a
-  whole query layer (graphql-java, schema governance) to the TP scope —
-  deferred; the bff pattern covers the same need imperatively.
-- **Ingress-level aggregation (nginx subrequests)**: possible but pushes
-  business logic into the ingress config — rejected: policies and probes
-  are uniform per service, and subrequest composition is a config nightmare
-  to maintain.
+- **Solo gateway (sin bff)**: lo más simple (9 servicios alcanzables
+  directo), pero cada cambio de UI fuerza cambios de rutas/agregación en el
+  gateway y el SPA hace N round trips — descartado como camino primario.
+- **GraphQL gateway**: la agregación schema-driven es elegante pero agrega
+  toda una capa de query (graphql-java, gobernanza de schema) al alcance del
+  TP — diferido; el patrón bff cubre la misma necesidad imperativamente.
+- **Agregación a nivel de ingress (subrequests de nginx)**: posible pero
+  empuja lógica de negocio a la config del ingress — descartado: las
+  políticas y probes son uniformes por servicio, y la composición por
+  subrequests es una pesadilla de config para mantener.
