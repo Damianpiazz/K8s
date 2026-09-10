@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+  annotations:
+    # Let's Encrypt certs via cert-manager. The letsencrypt-default ClusterIssuer
+    # is layered per environment: cluster/overlays/{dev,staging,prod}/issuer-default.yaml
+    cert-manager.io/cluster-issuer: letsencrypt-default
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Underlying service is HTTP-only; TLS terminates at the ingress.
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  # Public entrypoint for the storefront. Replace www.<domain> with your DNS
+  # zone (external-dns picks the hostname up and creates the A record).
+  # Path routing: /api/bff → bff-web, /api → api-gateway, / → frontend.
+  ingressClassName: nginx
+  rules:
+    - host: www.<domain>
+      http:
+        paths:
+          - path: /api/bff
+            pathType: Prefix
+            backend:
+              service:
+                name: bff-web
+                port:
+                  name: http
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - www.<domain>
+      secretName: frontend-tls

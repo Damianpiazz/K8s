@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+logs
+*.md
+.env*
+tsconfig.tsbuildinfo
+postcss.config.mjs
+components.json
