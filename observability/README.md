@@ -102,5 +102,11 @@ Suggested SLO targets for the TP demo (adjust to your SLA):
 ## What is intentionally NOT here
 
 - **PodMonitors** — see `podmonitors/README.md` (duplicate targets; ServiceMonitor suffices).
+- **frontend ServiceMonitor** — the frontend (Next.js, `services/frontend`) runs a Node
+  standalone server that does NOT expose Prometheus metrics (no `/actuator/prometheus`,
+  no `/metrics`). Its NetworkPolicy still opens the observability scrape peer for
+  consistency, but scraping would return the JSON health body (`/health`) in the wrong
+  format, so no ServiceMonitor is created for it. The frontend is monitored via k8s
+  liveness/readiness probes only.
 - **OTLP fallback / agent sidecar** — see `otel/README.md` (collector already present; app-side change is pom + env).
 - **Logs (Loki) and traces backend (Tempo)** — placeholders in the collector config; scoped to a later phase.

@@ -60,6 +60,7 @@ jobs:
           - returns-svc
           - analytics-svc
           - bff-web
+          - frontend
     uses: ./.github/workflows/reusable-build.yml
     with:
       service: ${{ matrix.service }}
@@ -116,7 +117,7 @@ jobs:
           for svc in config-service discovery-service api-gateway auth catalog-svc cart-svc \
                       checkout-svc order-svc payment-svc notification-svc search-svc \
                       recommendation-svc inventory-svc shipping-svc returns-svc \
-                      analytics-svc bff-web; do
+                      analytics-svc bff-web frontend; do
             IMAGE="${ACR_NAME}.azurecr.io/${svc}"
             yq eval -i "(.images[] | select(.newName == \"${IMAGE}\")) .newTag = \"${GITHUB_SHA}\"" "$KUST_FILE" 2>/dev/null || true
           done

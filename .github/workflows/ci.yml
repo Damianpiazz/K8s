@@ -37,6 +37,7 @@ jobs:
           - returns-svc
           - analytics-svc
           - bff-web
+          - frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,6 +91,7 @@ jobs:
           - returns-svc
           - analytics-svc
           - bff-web
+          - frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4

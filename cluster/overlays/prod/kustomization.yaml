@@ -44,6 +44,7 @@ resources:
   - ../../../services/shipping-svc/k8s/overlays/prod
   - ../../../services/returns-svc/k8s/overlays/prod
   - ../../../services/analytics-svc/k8s/overlays/prod
+  - ../../../services/frontend/k8s/overlays/prod
   # ── Observability app layer (Phase 8) ──
   - ../../../observability
   # ── Security app layer (Phase 8) ──
@@ -119,4 +120,7 @@ images:
     newTag: latest
   - name: acr.azurecr.io/bff-web
     newName: acr.azurecr.io/bff-web
+    newTag: latest
+  - name: acr.azurecr.io/frontend
+    newName: acr.azurecr.io/frontend
     newTag: latest
