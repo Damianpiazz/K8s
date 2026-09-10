@@ -1,57 +1,60 @@
-# observability/ — app-level observability (Phase 8)
+# observability/ — Observabilidad a nivel de aplicación (Fase 8)
 
-The **application observability layer** for the 17 e-commerce services. It sits
-*on top of* the Phase 3 platform bootstrap (`cluster/base/monitoring/`) and
-extends it with service-level scraping, dashboards, SLIs and alerts — everything
-the platform bootstrap deliberately did NOT ship (it only installs the stack and
-an example rule).
+La **capa de observabilidad de aplicación** para los 17 servicios
+e-commerce. Se apoya *por encima* del bootstrap de plataforma de la Fase 3
+(`cluster/base/monitoring/`) y lo extiende con scraping por servicio,
+dashboards, SLIs y alertas — todo lo que el bootstrap de plataforma
+deliberadamente NO trajo (solo instala el stack y una regla de ejemplo).
 
-## How this plugs into the deployed platform
+## Cómo se enchufa a la plataforma desplegada
 
-| Layer | Phase 3 platform (exists, read-only) | Phase 8 app layer (this directory) |
+| Capa | Plataforma Fase 3 (existe, read-only) | Capa de app Fase 8 (este directorio) |
 |---|---|---|
-| Stack | kube-prometheus-stack Helm chart (`cluster/base/monitoring/kube-prometheus-stack/`) | — consumes it |
-| Selectors | values.yaml opens `serviceMonitorSelector: {}`, `serviceMonitorNamespaceSelector: {}`, `ruleSelector: {}` | CRs are discovered from ANY namespace |
-| Scraping | otel-collector ServiceMonitor + example rule only | 17 ServiceMonitors → `services/*/k8s/base` endpoints |
-| Dashboards | grafana persistence off, dashboards via ConfigMap sidecar | 3 ConfigMaps with `grafana_dashboard: "1"` |
-| Rules | `dashboard-example.yaml` (order-svc p95 SLO example) | 4 PrometheusRules (down / 5xx / p99 / heap) |
+| Stack | chart Helm kube-prometheus-stack (`cluster/base/monitoring/kube-prometheus-stack/`) | — lo consume |
+| Selectors | values.yaml abre `serviceMonitorSelector: {}`, `serviceMonitorNamespaceSelector: {}`, `ruleSelector: {}` | los CRs se descubren de CUALQUIER namespace |
+| Scraping | solo el ServiceMonitor del otel-collector + regla de ejemplo | 17 ServiceMonitors → endpoints de `services/*/k8s/base` |
+| Dashboards | persistencia de grafana off, dashboards via sidecar de ConfigMap | 3 ConfigMaps con `grafana_dashboard: "1"` |
+| Reglas | `dashboard-example.yaml` (ejemplo de SLO p95 de order-svc) | 4 PrometheusRules (down / 5xx / p99 / heap) |
 
-### Verified integration contracts
+### Contratos de integración verificados
 
-- **Scrape path**: every service exposes `/actuator/prometheus`
-  (`services/README.md`), and every pom ships `spring-boot-starter-actuator` +
-  `micrometer-registry-prometheus` (verified in all 17 `services/*/pom.xml`).
-- **Scrape port**: every Service declares the named port `http` →
-  `targetPort: http`, and the ServiceMonitor endpoints reference `port: http`
-  (no hard-coded numbers).
-- **Labels**: services carry `app: <svc>` on Service + Pod (verified in
-  `services/*/k8s/base/{service,deployment}.yaml`); ServiceMonitors select on
-  `app: <svc>` and are placed in `observability` with
-  `namespaceSelector.matchNames: [ecommerce]` (a ServiceMonitor only watches its
-  OWN namespace by default — this is the single most common setup mistake).
-- **job label**: `spec.jobLabel: app` → `job=<svc-name>`, matching the existing
-  platform rule `cluster/base/monitoring/dashboard-example.yaml` (`job="order-svc"`).
-- **NetworkPolicy**: each service's per-service policy already allows ingress
-  from the `observability` namespace + the `app.kubernetes.io/name: prometheus`
-  pod, so Prometheus scraping is permitted end-to-end.
-- **Grafana sidecar**: the deployed values do NOT override `grafana.sidecar.*`,
-  so the kube-prometheus-stack chart **defaults** apply: dashboard ConfigMaps
-  need the label `grafana_dashboard: "1"` and data keys ending in `.json`. The
-  dashboards reference the chart-provisioned Prometheus datasource by
-  `uid: prometheus` (the chart default reserve uid).
+- **Path de scrape**: cada servicio expone `/actuator/prometheus`
+  (`services/README.md`), y cada pom trae `spring-boot-starter-actuator` +
+  `micrometer-registry-prometheus` (verificado en los 17 `services/*/pom.xml`).
+- **Puerto de scrape**: cada Service declara el puerto nombrado `http` →
+  `targetPort: http`, y los endpoints del ServiceMonitor referencían
+  `port: http` (sin números hardcodeados).
+- **Labels**: los servicios llevan `app: <svc>` en Service + Pod (verificado
+  en `services/*/k8s/base/{service,deployment}.yaml`); los ServiceMonitors
+  seleccionan por `app: <svc>` y están en `observability` con
+  `namespaceSelector.matchNames: [ecommerce]` (un ServiceMonitor solo mira su
+  PROPIO namespace por defecto — este es el error de setup más común).
+- **Label job**: `spec.jobLabel: app` → `job=<svc-name>`, coincidiendo con la
+  regla de plataforma existente `cluster/base/monitoring/dashboard-example.yaml`
+  (`job="order-svc"`).
+- **NetworkPolicy**: la política por servicio de cada servicio ya permite
+  ingress desde el namespace `observability` + el pod con
+  `app.kubernetes.io/name: prometheus`, así que el scraping de Prometheus está
+  permitido end-to-end.
+- **Sidecar de Grafana**: los values desplegados NO overridean
+  `grafana.sidecar.*`, así que aplican los **defaults** del chart de
+  kube-prometheus-stack: los ConfigMaps de dashboards necesitan el label
+  `grafana_dashboard: "1"` y claves de data que terminen en `.json`. Los
+  dashboards referencían el datasource de Prometheus provisionado por el chart
+  con `uid: prometheus` (el uid reservado por defecto del chart).
 
 ## Layout
 
 ```
 observability/
-├─ kustomization.yaml        aggregates servicemonitors + alerts + dashboards
+├─ kustomization.yaml        agrega servicemonitors + alerts + dashboards
 ├─ servicemonitors/          17 ServiceMonitors (namespace ecommerce)
-├─ podmonitors/              README only — deliberately skipped (see file)
+├─ podmonitors/              solo README — deliberadamente omitido (ver archivo)
 ├─ dashboards/               spring-boot-overview.json, ecommerce-platform.json,
 │                            service-sli.json (+ configMapGenerator)
 ├─ alerts/                   service-down, service-high-error-rate,
 │                            service-high-latency, jvm-memory-pressure
-├─ otel/                     guidance-only OTLP env reference (not applied)
+├─ otel/                     referencia de env OTLP solo guía (no aplicado)
 └─ README.md
 ```
 
@@ -59,54 +62,60 @@ observability/
 
 ```bash
 kustomize build observability          # dry-run / render
-kubectl apply -k observability         # direct apply (dev/demo)
+kubectl apply -k observability         # apply directo (dev/demo)
 ```
 
-### Wiring into GitOps (for the orchestrator — DO NOT edit cluster/ yourself)
+### Wiring en GitOps (para el orquestador — NO edites cluster/ vos mismo)
 
-Add to **every** `cluster/overlays/{dev,staging,prod}/kustomization.yaml`,
-inside the existing `resources:` list:
+Agregá a **cada** `cluster/overlays/{dev,staging,prod}/kustomization.yaml`,
+dentro de la lista `resources:` existente:
 
 ```yaml
-  # ── Observability app layer (Phase 8) ──
+  # ── Capa de app de observabilidad (Fase 8) ──
   - ../../../observability
 ```
 
-Add after the `../../base` entry. Argo CD (or `kubectl apply -k cluster/overlays/<env>`)
-then deploys the ServiceMonitors, PrometheusRules and Grafana dashboards for that
-environment. The overlay's `namespaces:` / env-config resources stay untouched.
+Agregalo después de la entrada `../../base`. Argo CD (o
+`kubectl apply -k cluster/overlays/<env>`) después despliega los
+ServiceMonitors, PrometheusRules y dashboards de Grafana para ese ambiente.
+Los recursos `namespaces:` / env-config del overlay no se tocan.
 
-> The `observability` namespace itself already exists
-> (`cluster/base/namespaces/namespaces.yaml`) — nothing to create.
+> El namespace `observability` en sí ya existe
+> (`cluster/base/namespaces/namespaces.yaml`) — no hay que crear nada.
 
-## SLI definitions (used by dashboards + alerts)
+## Definiciones de SLI (usadas por dashboards + alertas)
 
-All SLIs are computed over 5-minute windows, per service (`job` label):
+Todos los SLIs se calculan sobre ventanas de 5 minutos, por servicio (label
+`job`):
 
-| SLI | Expression |
+| SLI | Expresión |
 |---|---|
-| Availability | `avg(up{namespace="ecommerce"})` → 0..1 |
-| Errors | `sum(rate(http_server_requests_seconds_count{namespace="ecommerce",status=~"5.."}[5m])) by (job) / clamp_min(sum(rate(...{namespace="ecommerce"}[5m])) by (job), 0.001)` |
-| Latency p99 | `histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{namespace="ecommerce"}[5m])) by (le, job))` |
-| JVM heap | `sum(jvm_memory_used_bytes{namespace="ecommerce",area="heap"}) by (job) / clamp_min(sum(jvm_memory_max_bytes{namespace="ecommerce",area="heap"}) by (job), 1)` |
+| Disponibilidad | `avg(up{namespace="ecommerce"})` → 0..1 |
+| Errores | `sum(rate(http_server_requests_seconds_count{namespace="ecommerce",status=~"5.."}[5m])) by (job) / clamp_min(sum(rate(...{namespace="ecommerce"}[5m])) by (job), 0.001)` |
+| Latencia p99 | `histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{namespace="ecommerce"}[5m])) by (le, job))` |
+| Heap JVM | `sum(jvm_memory_used_bytes{namespace="ecommerce",area="heap"}) by (job) / clamp_min(sum(jvm_memory_max_bytes{namespace="ecommerce",area="heap"}) by (job), 1)` |
 
-Suggested SLO targets for the TP demo (adjust to your SLA):
+Objetivos de SLO sugeridos para la demo del TP (ajustalos a tu SLA):
 
-| SLO | Target | Alert |
+| SLO | Target | Alerta |
 |---|---|---|
-| Availability | ≥ 99.9% (avg up) | `ServiceDown` (up == 0, 1m) |
-| Errors | ≤ 1% of requests | `ServiceHighErrorRate` (> 5%, 5m) |
-| Latency | p99 ≤ 2s | `ServiceHighLatency` (> 2s, 5m) |
-| Memory | heap ≤ 85% | `JvmMemoryPressure` (> 85%, 10m) |
+| Disponibilidad | ≥ 99.9% (avg up) | `ServiceDown` (up == 0, 1m) |
+| Errores | ≤ 1% de las peticiones | `ServiceHighErrorRate` (> 5%, 5m) |
+| Latencia | p99 ≤ 2s | `ServiceHighLatency` (> 2s, 5m) |
+| Memoria | heap ≤ 85% | `JvmMemoryPressure` (> 85%, 10m) |
 
-## What is intentionally NOT here
+## Lo que NO está acá intencionalmente
 
-- **PodMonitors** — see `podmonitors/README.md` (duplicate targets; ServiceMonitor suffices).
-- **frontend ServiceMonitor** — the frontend (Next.js, `services/frontend`) runs a Node
-  standalone server that does NOT expose Prometheus metrics (no `/actuator/prometheus`,
-  no `/metrics`). Its NetworkPolicy still opens the observability scrape peer for
-  consistency, but scraping would return the JSON health body (`/health`) in the wrong
-  format, so no ServiceMonitor is created for it. The frontend is monitored via k8s
-  liveness/readiness probes only.
-- **OTLP fallback / agent sidecar** — see `otel/README.md` (collector already present; app-side change is pom + env).
-- **Logs (Loki) and traces backend (Tempo)** — placeholders in the collector config; scoped to a later phase.
+- **PodMonitors** — ver `podmonitors/README.md` (targets duplicados;
+  ServiceMonitor alcanza).
+- **ServiceMonitor del frontend** — el frontend (Next.js, `services/frontend`)
+  corre un servidor Node standalone que NO expone métricas de Prometheus (no
+  tiene `/actuator/prometheus`, ni `/metrics`). Su NetworkPolicy igual abre el
+  peer de scrape de observability por consistencia, pero el scraping
+  devolvería el cuerpo JSON de health (`/health`) en el formato incorrecto,
+  así que no se crea ServiceMonitor para él. El frontend se monitorea solo con
+  probes de liveness/readiness de k8s.
+- **Fallback OTLP / sidecar de agente** — ver `otel/README.md` (el collector
+  ya está presente; el cambio del lado de la app es pom + env).
+- **Logs (Loki) y backend de traces (Tempo)** — placeholders en la config del
+  collector; scope para una fase posterior.

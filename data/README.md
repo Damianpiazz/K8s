@@ -1,37 +1,38 @@
-# data/ — Data layer (deployment options + connection config)
+# data/ — Capa de datos (opciones de despliegue + config de conexión)
 
-The data layer of the e-commerce platform (Phase 4). This directory holds the
-**in-cluster alternatives** for local/dev environments PLUS the connection
-configuration that services consume.
+La capa de datos de la plataforma e-commerce (Fase 4). Este directorio tiene
+las **alternativas in-cluster** para ambientes locales/dev MÁS la
+configuración de conexión que los servicios consumen.
 
-## The big decision: managed vs in-cluster
+## La gran decisión: gestionado vs in-cluster
 
-The platform's **default and primary path is Azure-managed data services**,
-provisioned by `infra/terraform` (Phase 2):
+El **camino default y primario de la plataforma son los servicios de datos
+gestionados por Azure**, aprovisionados por `infra/terraform` (Fase 2):
 
-| Service | Managed (Phase 2, default) | In-cluster (this dir, alternative) |
+| Servicio | Gestionado (Fase 2, default) | In-cluster (este dir, alternativa) |
 |---|---|---|
 | PostgreSQL | Azure Database for PostgreSQL Flexible Server | CloudNativePG (`data/postgres/manifests/cluster.yaml`) |
 | Redis | Azure Cache for Redis | Bitnami Redis (`data/redis/values.yaml`) |
-| Kafka | Azure Event Hubs (Kafka endpoint) | Strimzi Kafka (`data/kafka/strimzi/kafka-cluster.yaml`) |
+| Kafka | Azure Event Hubs (endpoint Kafka) | Strimzi Kafka (`data/kafka/strimzi/kafka-cluster.yaml`) |
 
-Rule of thumb:
+Regla práctica:
 
-- **AKS cluster with terraform outputs** → use managed services. Point services
-  at the FQDNs from `cluster/overlays/*/env-config.yaml` (auto-injected via
-  `ecommerce-env-config`).
-- **minikube / kind / local dev cluster** → deploy the in-cluster options from
-  this directory. Services keep the same config keys, only the hosts change
-  (service DNS names like `postgres.data.svc.cluster.local`).
+- **Clúster AKS con salidas de terraform** → usá servicios gestionados. Apuntá
+  los servicios a los FQDNs de `cluster/overlays/*/env-config.yaml`
+  (auto-inyectado via `ecommerce-env-config`).
+- **minikube / kind / clúster de dev local** → desplegá las opciones in-cluster
+  de este directorio. Los servicios mantienen las mismas claves de config, solo
+  cambian los hosts (nombres DNS de servicios como
+  `postgres.data.svc.cluster.local`).
 
-## Connection model
+## Modelo de conexión
 
-Services never hardcode connection strings. Two mechanisms:
+Los servicios nunca hardcodean connection strings. Dos mecanismos:
 
-1. **Per-env ConfigMap** `ecommerce-env-config` (from `cluster/overlays/`)
-   — hosts, ports, bootstrap servers:
+1. **ConfigMap por ambiente** `ecommerce-env-config` (de `cluster/overlays/`)
+   — hosts, puertos, bootstrap servers:
 
-   | Key | Managed value (example) | In-cluster value |
+   | Clave | Valor gestionado (ejemplo) | Valor in-cluster |
    |---|---|---|
    | `DB_HOST` | `pg-dev-ecommerce.postgres.database.azure.com` | `postgres.data.svc.cluster.local` |
    | `DB_PORT` | `5432` | `5432` |
@@ -39,63 +40,64 @@ Services never hardcode connection strings. Two mechanisms:
    | `REDIS_PORT` | `6380` (TLS) | `6379` |
    | `KAFKA_BOOTSTRAP` | `ns-dev-ecommerce.servicebus.windows.net:9093` | `ecommerce-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092` |
 
-2. **Secrets** — passwords and credentials never live in ConfigMaps:
-   - Managed path: Azure Key Vault → `ClusterSecretStore` → `ExternalSecret`
-     (see `cluster/base/external-secrets/`).
-   - In-cluster path: plain Kubernetes Secrets from this directory
+2. **Secrets** — los passwords y credenciales nunca viven en ConfigMaps:
+   - Camino gestionado: Azure Key Vault → `ClusterSecretStore` →
+     `ExternalSecret` (ver `cluster/base/external-secrets/`).
+   - Camino in-cluster: Kubernetes Secrets plain de este directorio
      (`postgres-creds`, `redis-creds`, `event-hubs-credentials`).
 
-## Directory map
+## Mapa del directorio
 
 ```
 data/
-├─ README.md                    ← you are here
+├─ README.md                    ← estás acá
 ├─ postgres/
-│   ├─ values-cloudnative-pg.yaml   # CNPG operator Helm values (thin)
-│   ├─ values-patroni.yaml          # (optional) Patroni chart alternative — documented
+│   ├─ values-cloudnative-pg.yaml   # valores Helm del operador CNPG (thin)
+│   ├─ values-patroni.yaml          # (opcional) alternativa con chart Patroni — documentado
 │   └─ manifests/
-│       ├─ cloudnativepg-operator.yaml  # reference: operator install flow
-│       ├─ cluster.yaml             # CNPG Cluster CR (2 replicas, PVC, backup placeholder)
-│       └─ postgres-creds.yaml      # placeholder Secret (namespace data)
+│       ├─ cloudnativepg-operator.yaml  # referencia: flujo de instalación del operador
+│       ├─ cluster.yaml             # CR de Cluster CNPG (2 réplicas, PVC, backup placeholder)
+│       └─ postgres-creds.yaml      # Secret placeholder (namespace data)
 ├─ redis/
-│   ├─ values.yaml              # Bitnami Redis Helm values (standalone, dev)
-│   └─ README.md                # managed vs in-cluster
+│   ├─ values.yaml              # valores Helm de Bitnami Redis (standalone, dev)
+│   └─ README.md                # gestionado vs in-cluster
 └─ kafka/
     ├─ strimzi/
-    │   ├─ values.yaml          # Strimzi operator Helm values (thin)
-    │   └─ kafka-cluster.yaml   # Kafka CR (3 brokers, dev listeners)
-    └─ README.md                # managed vs in-cluster
+    │   ├─ values.yaml          # valores Helm del operador Strimzi (thin)
+    │   └─ kafka-cluster.yaml   # CR de Kafka (3 brokers, listeners de dev)
+    └─ README.md                # gestionado vs in-cluster
 ```
 
-## In-cluster install order (local/dev only)
+## Orden de instalación in-cluster (solo local/dev)
 
 ```bash
-# Postgres — operator first, Cluster second (namespace data exists in base)
+# Postgres — operador primero, Cluster después (el namespace data existe en base)
 helm install cnpg cloudnative-pg/cloudnative-pg -n data -f data/postgres/values-cloudnative-pg.yaml
 kubectl apply -f data/postgres/manifests/postgres-creds.yaml
 kubectl apply -f data/postgres/manifests/cluster.yaml
 
-# Redis — chart deploys with an existingSecret reference
-#   create redis-creds first (see data/redis/README.md)
+# Redis — el chart despliega con referencia a existingSecret
+#   creá redis-creds primero (ver data/redis/README.md)
 kubectl create secret generic redis-creds -n data --from-literal=redis-password=change-me
 helm install redis bitnami/redis -n data -f data/redis/values.yaml
 
-# Kafka — operator first, Kafka CR second (namespace kafka must exist)
+# Kafka — operador primero, CR de Kafka después (el namespace kafka debe existir)
 kubectl create ns kafka
 helm install strimzi strimzi/strimzi-kafka-operator -n kafka -f data/kafka/strimzi/values.yaml
 kubectl apply -f data/kafka/strimzi/kafka-cluster.yaml
 ```
 
-**Never** deploy both paths for the same service on one cluster: the in-cluster
-alternatives exist so local dev can run without Azure resources. The managed
-path remains the production answer, and terraform outputs feed the per-env
-ConfigMaps that services actually read.
+**Nunca** despliegues ambos caminos para el mismo servicio en un clúster: las
+alternativas in-cluster existen para que el dev local corra sin recursos de
+Azure. El camino gestionado sigue siendo la respuesta de producción, y las
+salidas de terraform alimentan los ConfigMaps por ambiente que los servicios
+realmente leen.
 
-## Placeholder audit
+## Auditoría de placeholders
 
-| File | Placeholder | Replace with |
+| Archivo | Placeholder | Reemplazar con |
 |---|---|---|
-| `postgres/manifests/postgres-creds.yaml` | `change-me` | a real password (or let external-secrets own it) |
-| `postgres/manifests/cluster.yaml` | commented `objectStore` backup block | your Azure Blob Storage settings when enabling backups |
-| `redis/values.yaml` | `redis-creds` secret | create it (command above) before `helm install` |
-| `kafka/strimzi/kafka-cluster.yaml` | listener ports / storage class | your dev cluster's storage class if not `standard` |
+| `postgres/manifests/postgres-creds.yaml` | `change-me` | un password real (o dejá que external-secrets lo maneje) |
+| `postgres/manifests/cluster.yaml` | bloque `objectStore` de backup comentado | tus settings de Azure Blob Storage al habilitar backups |
+| `redis/values.yaml` | secret `redis-creds` | crealo (comando de arriba) antes de `helm install` |
+| `kafka/strimzi/kafka-cluster.yaml` | puertos de listener / storage class | la storage class de tu clúster de dev si no es `standard` |

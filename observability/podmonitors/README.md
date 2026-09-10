@@ -1,45 +1,48 @@
-# PodMonitors — intentionally SKIPPED
+# PodMonitors — deliberadamente OMITIDOS
 
-The original Phase 8 brief asked for a PodMonitor targeting the edge services
-(`api-gateway`, `bff-web`) "if needed for Spring Boot metrics that ServiceMonitor
-can't reach".
+El brief original de la Fase 8 pedía un PodMonitor apuntando a los servicios
+edge (`api-gateway`, `bff-web`) "si fuera necesario para métricas de Spring
+Boot que ServiceMonitor no puede alcanzar".
 
-**Decision: not needed — no PodMonitor is deployed.**
+**Decisión: no hace falta — no se despliega ningún PodMonitor.**
 
-## Why
+## Por qué
 
-A PodMonitor is only required when a workload exposes metrics on a port that has
-no backing Kubernetes `Service` (or whose metrics endpoint differs from the
-service port). Neither edge service falls in that category:
+Un PodMonitor solo es necesario cuando un workload expone métricas en un
+puerto que no tiene un `Service` de Kubernetes de respaldo (o cuyo endpoint de
+métricas difiere del puerto del service). Ninguno de los servicios edge cae en
+esa categoría:
 
-- `api-gateway` (port **8080**) and `bff-web` (port **8090**) each define a
-  regular `ClusterIP` Service with a named port `http` → `targetPort: http`
-  (verified in `services/api-gateway/k8s/base/service.yaml` and
-  `services/bff-web/k8s/base/service.yaml`).
-- Both expose the same Actuator metrics endpoint as every other service:
-  `/actuator/prometheus` (services/README.md: "Every service exposes
+- `api-gateway` (puerto **8080**) y `bff-web` (puerto **8090**) definen cada
+  uno un `ClusterIP` Service regular con un puerto nombrado `http` →
+  `targetPort: http` (verificado en `services/api-gateway/k8s/base/service.yaml`
+  y `services/bff-web/k8s/base/service.yaml`).
+- Ambos exponen el mismo endpoint de métricas de Actuator que cualquier otro
+  servicio: `/actuator/prometheus` (services/README.md: "Every service exposes
   `/actuator/prometheus`").
 
-The `api-gateway` ServiceMonitor in `../servicemonitors/servicemonitors.yaml`
-already covers this exact path. A PodMonitor selecting the same pods would create
-**duplicate scrape targets** (same series, double the scrape load on a
-$0-budget demo cluster with 6h retention).
+El ServiceMonitor de `api-gateway` en `../servicemonitors/servicemonitors.yaml`
+ya cubre ese path exacto. Un PodMonitor seleccionando los mismos pods crearía
+**targets de scrape duplicados** (mismas series, doble carga de scrape en un
+clúster de demo con presupuesto $0 y 6h de retención).
 
-## When you WOULD need a PodMonitor here
+## Cuándo SÍ necesitarías un PodMonitor acá
 
-- If a future service exposes Prometheus metrics on a **non-Service port** or on
-  **localhost/headless** endpoints (e.g. an OpenTelemetry SDK pushing to a
-  sidecar, or a metrics port deliberately not published as a Service).
-- If you switch the edge services to expose metrics on a separate management
-  port that is not part of the `http` Service port.
+- Si un servicio futuro expone métricas de Prometheus en un **puerto sin
+  Service** o en endpoints **localhost/headless** (p. ej. un SDK de
+  OpenTelemetry pusheando a un sidecar, o un puerto de métricas
+  deliberadamente no publicado como Service).
+- Si cambiás los servicios edge para exponer métricas en un puerto de
+  management separado que no es parte del puerto `http` del Service.
 
-If that happens: add the PodMonitor file here (selector `app in [api-gateway,
-bff-web]`, namespace `ecommerce`, namespaceSelector matching `observability`),
-list it in a `kustomization.yaml`, and remove the `enabled` flag stays as-is —
-the ServiceMonitor keeps working.
+Si eso pasa: agregá el archivo de PodMonitor acá (selector `app in
+[api-gateway, bff-web]`, namespace `ecommerce`, namespaceSelector que matchee
+`observability`), listalo en un `kustomization.yaml`, y el ServiceMonitor sigue
+funcionando sin tocar nada.
 
 ## Wiring
 
-Nothing to wire: this directory intentionally contains no resources. The
-orchestrator should NOT add `observability/podmonitors` to any kustomization
-(an empty kustomization adds nothing, but keeping it out keeps the build clean).
+Nada que cablear: este directorio deliberadamente no contiene recursos. El
+orquestador NO debería agregar `observability/podmonitors` a ninguna
+kustomization (una kustomization vacía no agrega nada, pero mantenerla afuera
+mantiene el build limpio).

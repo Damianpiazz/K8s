@@ -1,71 +1,77 @@
-# tests/ — Integration-oriented test assets (Phase 9)
+# tests/ — Assets de test orientados a integración (Fase 9)
 
-This directory holds **repo-level contract checks** that complement — but do
-NOT replace — the per-service JUnit tests (`services/<svc>/src/test/`, 17
-Spring Boot suites, e.g. `CatalogServiceApplicationTests`). The JUnit tests
-prove each service works; these checks prove the **manifests and wiring**
-around the services keep matching the repo's contracts (services/README.md,
-cd.yml, cluster/overlays wiring, observability/ + security/ integration).
+Este directorio guarda **chequeos de contrato a nivel de repo** que
+complementan — pero NO reemplazan — los tests JUnit por servicio
+(`services/<svc>/src/test/`, 17 suites de Spring Boot, p. ej.
+`CatalogServiceApplicationTests`). Los tests JUnit prueban que cada servicio
+funciona; estos chequeos prueban que los **manifiestos y el wiring** alrededor
+de los servicios sigan matcheando los contratos del repo (services/README.md,
+cd.yml, wiring de cluster/overlays, integración de observability/ +
+security/).
 
-## What each check verifies
+## Qué verifica cada chequeo
 
-| Check | Command | Verifies |
+| Chequeo | Comando | Verifica |
 |---|---|---|
-| `manifests/test-yaml-parse.py` | `python tests\manifests\test-yaml-parse.py` | Every `.yaml`/`.yml` in the repo is valid YAML with no duplicate mapping keys. |
-| `manifests/test-kustomize-build.py` | `python tests\manifests\test-kustomize-build.py` | `kustomize build` (or `kubectl kustomize` fallback) renders cleanly for `cluster/base`, `cluster/overlays/{dev,staging,prod}`, `observability`, `security`, and every `services/*/k8s/base` + `services/*/k8s/overlays/prod`. Skips with a warning if neither tool is present. |
-| `manifests/test-service-contract.py` | `python tests\manifests\test-service-contract.py` | The 17-service layout contract: `Dockerfile`, the seven `k8s/base` manifests, `images[].name == newName == acr.azurecr.io/<svc>`, pod labels `app` + `env`, `securityContext.runAsNonRoot` + `seccompProfile: RuntimeDefault`, an `/actuator/health` probe, and a `Service` port named `http`. |
-| `manifests/test-overlay-wiring.py` | `python tests\manifests\test-overlay-wiring.py` | `cluster/overlays/{dev,staging,prod}`: every `resources[]` entry resolves, `images[]` covers all 17 services with the CD `newName` contract, dev/staging point at `k8s/base` while prod points at `k8s/overlays/prod`, and the Phase 8 `observability` + `security` layers are wired in. |
+| `manifests/test-yaml-parse.py` | `python tests\manifests\test-yaml-parse.py` | Cada `.yaml`/`.yml` del repo es YAML válido sin claves de mapeo duplicadas. |
+| `manifests/test-kustomize-build.py` | `python tests\manifests\test-kustomize-build.py` | `kustomize build` (o fallback `kubectl kustomize`) renderiza limpio para `cluster/base`, `cluster/overlays/{dev,staging,prod}`, `observability`, `security`, y cada `services/*/k8s/base` + `services/*/k8s/overlays/prod`. Saltea con warning si no hay ninguna de las herramientas. |
+| `manifests/test-service-contract.py` | `python tests\manifests\test-service-contract.py` | El contrato de layout de los 17 servicios: `Dockerfile`, los siete manifiestos `k8s/base`, `images[].name == newName == acr.azurecr.io/<svc>`, labels de pod `app` + `env`, `securityContext.runAsNonRoot` + `seccompProfile: RuntimeDefault`, una probe `/actuator/health`, y un puerto `http` en el `Service`. |
+| `manifests/test-overlay-wiring.py` | `python tests\manifests\test-overlay-wiring.py` | `cluster/overlays/{dev,staging,prod}`: cada entrada `resources[]` resuelve, `images[]` cubre los 17 servicios con el contrato `newName` del CD, dev/staging apuntan a `k8s/base` mientras prod apunta a `k8s/overlays/prod`, y las capas `observability` + `security` de la Fase 8 están cableadas. |
 
-The checks exit non-zero on failure and are safe to run on Windows (pathlib +
-UTF-8 everywhere). Only dependency: PyYAML (`python -m pip install pyyaml`);
-if it is missing, the scripts print an install hint.
+Los chequeos salen con non-zero en falla y son seguros de correr en Windows
+(pathlib + UTF-8 en todos lados). Única dependencia: PyYAML
+(`python -m pip install pyyaml`); si falta, los scripts imprimen una pista de
+instalación.
 
-## How to run
+## Cómo correrlos
 
 ```powershell
-# From the repo root (paths are resolved relative to the script location,
-# so any working directory works):
+# Desde la raíz del repo (los paths se resuelven relativos a la ubicación del
+# script, así que cualquier working directory funciona):
 python tests\manifests\test-yaml-parse.py
 python tests\manifests\test-kustomize-build.py
 python tests\manifests\test-service-contract.py
 python tests\manifests\test-overlay-wiring.py
 
-# Or all of it plus the kustomize tree check in one go:
+# O todo junto más el chequeo del árbol kustomize en una pasada:
 .\scripts\tests\validate-manifests.ps1            # PowerShell (Windows)
 ./scripts/tests/validate-manifests.sh             # bash (Linux/macOS)
 ```
 
-## Why these contracts exist (Phase 8 tie-in)
+## Por qué existen estos contratos (tie-in con la Fase 8)
 
-- **Observability**: `test-service-contract.py` checks the exact properties the
-  ServiceMonitors in `observability/servicemonitors/` depend on — pod label
-  `app: <svc>` and a Service port named `http`. `test-overlay-wiring.py`
-  confirms every env actually loads the `observability/` layer. Without those,
-  Prometheus (kube-prometheus-stack) discovers nothing and the SLI dashboards
-  (`observability/dashboards/service-sli.json`) stay empty.
-- **Security**: the `securityContext` checks (runAsNonRoot, `seccompProfile:
-  RuntimeDefault`) are the PSA-restricted gate from
-  `security/pod-security/pod-security-labels.yaml` — the known blocker called
-  out in `security/README.md`. The `networkpolicy.yaml` presence check is part
-  of the default-deny model: a service without a per-service NetworkPolicy is
-  cut off completely by `security/network-policies/default-deny-all.yaml`.
-- **CD contract**: `images[].newName == acr.azurecr.io/<svc>` is exactly the
-  selector `.github/workflows/cd.yml` uses with `yq` to rewrite `newTag`. If a
-  service's `newName` drifts, the pipeline silently stops bumping its images.
+- **Observability**: `test-service-contract.py` chequea las propiedades exactas
+  de las que dependen los ServiceMonitors en `observability/servicemonitors/`
+  — label de pod `app: <svc>` y un puerto `http` en el Service.
+  `test-overlay-wiring.py` confirma que cada env carga la capa
+  `observability/`. Sin eso, Prometheus (kube-prometheus-stack) no descubre
+  nada y los dashboards de SLI (`observability/dashboards/service-sli.json`)
+  quedan vacíos.
+- **Security**: los chequeos de `securityContext` (runAsNonRoot,
+  `seccompProfile: RuntimeDefault`) son el gate de PSA-restricted de
+  `security/pod-security/pod-security-labels.yaml` — el blocker conocido que
+  se señala en `security/README.md`. El chequeo de presencia de
+  `networkpolicy.yaml` es parte del modelo default-deny: un servicio sin
+  NetworkPolicy por servicio queda completamente aislado por
+  `security/network-policies/default-deny-all.yaml`.
+- **Contrato de CD**: `images[].newName == acr.azurecr.io/<svc>` es
+  exactamente el selector que `.github/workflows/cd.yml` usa con `yq` para
+  reescribir `newTag`. Si el `newName` de un servicio drift, el pipeline deja
+  de bumpear sus imágenes silenciosamente.
 
-## CI integration note
+## Nota de integración con CI
 
-`.github/workflows/ci.yml` already runs a kustomize build over
-`cluster/overlays/*` and Maven tests per service. Wiring `tests/manifests/*.py`
-into CI (e.g. a `test-manifests` job running the four checks) would close the
-gap between "renders" and "contracts" — **deliberately not done here**: the
-brief scopes this phase to local + test assets, and `.github/` is read-only for
-this phase. When you do wire it, use `pip install pyyaml` or
-`actions/setup-python` + a requirements file.
+`.github/workflows/ci.yml` ya corre un kustomize build sobre
+`cluster/overlays/*` y tests Maven por servicio. Cablear `tests/manifests/*.py`
+al CI (p. ej. un job `test-manifests` que corra los cuatro chequeos) cerraría
+el gap entre "renderiza" y "contratos" — **deliberadamente no hecho acá**: el
+brief acota esta fase a assets locales + de test, y `.github/` es read-only
+para esta fase. Cuando lo cablees, usá `pip install pyyaml` o
+`actions/setup-python` + un archivo de requirements.
 
-## Scope note
+## Nota de scope
 
-These checks are static/structural. True integration (service-to-service over
-the cluster, e2e flows through the api-gateway, load tests) belongs in a later
-phase — the directory layout (`tests/manifests/`) leaves room for
-`tests/e2e/` and `tests/load/` next to it.
+Estos chequeos son estáticos/estructurales. La integración real
+(service-to-service sobre el clúster, flujos e2e a través del api-gateway,
+load tests) pertenece a una fase posterior — el layout del directorio
+(`tests/manifests/`) deja lugar para `tests/e2e/` y `tests/load/` al lado.

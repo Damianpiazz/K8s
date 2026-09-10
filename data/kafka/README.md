@@ -1,36 +1,37 @@
-# data/kafka — Kafka deployment options
+# data/kafka — Opciones de despliegue de Kafka
 
-## Managed (default): Azure Event Hubs with Kafka protocol
+## Gestionado (default): Azure Event Hubs con protocolo Kafka
 
-Provisioned by `infra/terraform` (Phase 2). Event Hubs exposes a
-Kafka-compatible endpoint, which is what the per-env ConfigMap points at:
+Aprovisionado por `infra/terraform` (Fase 2). Event Hubs expone un endpoint
+compatible con Kafka, que es a lo que apunta el ConfigMap por ambiente:
 
-| Key | Managed value (example) |
+| Clave | Valor gestionado (ejemplo) |
 |---|---|
 | `KAFKA_BOOTSTRAP` | `ns-dev-ecommerce.servicebus.windows.net:9093` |
 | `KAFKA_SECURITY_PROTOCOL` | `SASL_SSL` |
 
-Event Hubs specifics services must handle:
+Particularidades de Event Hubs que los servicios deben manejar:
 
-- **SASL/PLAIN + TLS** — use `SASL_SSL` with username `$ConnectionString` and
-  the namespace's connection string as password (a `Key Vault → ExternalSecret`
-  secret, never a ConfigMap).
-- **Topics are Event Hubs** — creation is done in Azure (or via the Event Hubs
-  admin SDK), not by Kafka auto-create. `auto.create.topics.enable` is ignored
-  on the Azure side.
-- **Consumer groups** must be created ahead of time (the KEDA ScaledObject in
-  `cluster/base/keda/` already references `order-worker` as one).
-- Kafka version fingerprint: Event Hubs speaks Kafka protocol 2.x — clients
-  should target `kafka.version=2.0.0`-ish; the base ScaledObject uses 2.0.0.
+- **SASL/PLAIN + TLS** — usá `SASL_SSL` con usuario `$ConnectionString` y la
+  connection string del namespace como password (un secreto `Key Vault →
+  ExternalSecret`, nunca un ConfigMap).
+- **Los topics son Event Hubs** — la creación se hace en Azure (o via el admin
+  SDK de Event Hubs), no por auto-create de Kafka.
+  `auto.create.topics.enable` se ignora del lado de Azure.
+- **Los consumer groups** deben crearse con anticipación (el ScaledObject de
+  KEDA en `cluster/base/keda/` ya referencía `order-worker` como uno).
+- Fingerprint de la versión de Kafka: Event Hubs habla protocolo Kafka 2.x —
+  los clientes deberían apuntar a `kafka.version=2.0.0`-ish; el ScaledObject
+  base usa 2.0.0.
 
-## In-cluster (dev/local alternative): Strimzi
+## In-cluster (alternativa dev/local): Strimzi
 
-Same operator + CR pattern as any Kafka deployment. Files:
+Mismo patrón de operador + CR que cualquier despliegue de Kafka. Archivos:
 
-- `strimzi/values.yaml` — operator Helm values (thin: watch all namespaces,
-  CRDs installed by the chart).
-- `strimzi/kafka-cluster.yaml` — Kafka CR: 3 brokers, ephemeral storage,
-  internal + NodePort listeners, metrics placeholder, entity operator with
+- `strimzi/values.yaml` — valores Helm del operador (thin: mira todos los
+  namespaces, los CRDs los instala el chart).
+- `strimzi/kafka-cluster.yaml` — CR de Kafka: 3 brokers, storage efímero,
+  listeners internal + NodePort, placeholder de métricas, entity operator con
   topic + user operators.
 
 ```bash
@@ -40,20 +41,22 @@ helm install strimzi strimzi/strimzi-kafka-operator -n kafka \
   -f data/kafka/strimzi/values.yaml
 kubectl apply -f data/kafka/strimzi/kafka-cluster.yaml
 
-# wait for readiness
+# esperá la readiness
 kubectl -n kafka get kafka ecommerce-kafka -w
 ```
 
-Service DNS: `ecommerce-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092`
-(plaintext, cluster network only). Host access: NodePort 30892.
+DNS del servicio: `ecommerce-kafka-kafka-bootstrap.kafka.svc.cluster.local:9092`
+(plaintext, solo red del clúster). Acceso del host: NodePort 30892.
 
-## What not to do
+## Qué NO hacer
 
-- Never deploy both paths for the same environment (Strimzi cluster AND Event
-  Hubs pointing at the same topic names → split brain consumers).
-- Do not use ephemeral storage outside dev — brokers lose data on restart.
-  Switch `spec.kafka.storage` to `persistent-claim` for staging/prod.
-- Do not expose the plaintext listener outside the cluster. The NodePort
-  listener exists for local dev only; remove it on anything shared.
-- Event Hubs topics are NOT auto-created from Strimzi-style `auto.create` —
-  create hubs + consumer groups in Azure ahead of deployments.
+- Nunca despliegues ambos caminos para el mismo ambiente (clúster Strimzi Y
+  Event Hubs apuntando a los mismos nombres de topic → consumidores con split
+  brain).
+- No uses storage efímero fuera de dev — los brokers pierden datos al
+  reiniciar. Cambiá `spec.kafka.storage` a `persistent-claim` para
+  staging/prod.
+- No expongas el listener plaintext fuera del clúster. El listener NodePort
+  existe solo para dev local; removelo en cualquier cosa compartida.
+- Los topics de Event Hubs NO se auto-crean con el `auto.create` estilo
+  Strimzi — creá los hubs y consumer groups en Azure antes de los despliegues.

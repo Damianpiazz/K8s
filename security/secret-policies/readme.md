@@ -1,65 +1,72 @@
-# security/secret-policies — secrets as code: policy + guidance
+# security/secret-policies — secretos como código: política + guía
 
-## How secrets REALLY work in this platform (verified)
+## Cómo funcionan REALMENTE los secretos en esta plataforma (verificado)
 
-1. **Azure Key Vault** holds the credentials (the cluster is on AKS).
-2. **External Secrets Operator (ESO)** syncs them into Kubernetes Secrets via
-   the `azure-keyvault` **ClusterSecretStore**
+1. **Azure Key Vault** guarda las credenciales (el clúster está en AKS).
+2. **External Secrets Operator (ESO)** las sincroniza a Kubernetes Secrets via
+   el **ClusterSecretStore** `azure-keyvault`
    (`cluster/base/external-secrets/cluster-secret-store.yaml`, authType
-   ManagedIdentity or WorkloadIdentity).
-3. Services consume the generated `Secret` via the usual `envFrom.secretRef`
-   style (or volume mount). See the working example
-   (`cluster/base/external-secrets/example-external-secret.yaml`) which creates
-   `ecommerce-db-credentials/db-password` from Key Vault.
+   ManagedIdentity o WorkloadIdentity).
+3. Los servicios consumen el `Secret` generado con el estilo habitual de
+   `envFrom.secretRef` (o volume mount). Ver el ejemplo funcionando
+   (`cluster/base/external-secrets/example-external-secret.yaml`) que crea
+   `ecommerce-db-credentials/db-password` desde Key Vault.
 
-**Rule: no credential is ever written by hand in this repo.** That is what
-`disallow-plain-secrets.yaml` enforces (in Audit mode by default).
+**Regla: ninguna credencial se escribe a mano en este repo.** Eso es lo que
+enforcea `disallow-plain-secrets.yaml` (en modo Audit por defecto).
 
-## What this directory contains
+## Qué contiene este directorio
 
-| File | Kind | Mode | Purpose |
+| Archivo | Kind | Modo | Propósito |
 |---|---|---|---|
-| `disallow-plain-secrets.yaml` | Kyverno ClusterPolicy | **Audit** (default) | Flags Opaque Secrets whose key names look like credentials (password/token/api_key/...) created by hand in the `ecommerce` namespace. |
-| `readme.md` (this file) | doc | — | Integration + tuning instructions. |
+| `disallow-plain-secrets.yaml` | Kyverno ClusterPolicy | **Audit** (default) | Marca Secrets Opaque cuyos nombres de clave parecen credenciales (password/token/api_key/...) creados a mano en el namespace `ecommerce`. |
+| `readme.md` (este archivo) | doc | — | Instrucciones de integración + tuning. |
 
-### Why Audit and not Enforce (deliberate deviation from the brief)
+### Por qué Audit y no Enforce (desviación deliberada del brief)
 
-The brief offered an Enforce policy but explicitly said "students must tune
-it". I judged **Enforce too invasive as-shipped** for three verified reasons:
+El brief ofrecía una política Enforce pero decía explícitamente "los
+estudiantes deben tuneearla". Juzgué **Enforce demasiado invasivo as-shipped**
+por tres razones verificadas:
 
-1. **ESO collision**: ExternalSecrets creates real Secrets with key names like
-   `db-password` → the policy's own target keys. In Enforce, with
-   `creationPolicy: Owner` in `example-external-secret.yaml`, the controller's
-   Secret would be **rejected at admission and the platform breaks**.
-2. **Repo precedent**: `require-resources` (cluster/base/kyverno) ships as
-   Audit until every workload conforms — same conservative rule.
-3. **Training context**: the regex key list is a starting point; a student must
-   tune it to their real key inventory before it can safely block.
+1. **Colisión con ESO**: los ExternalSecrets crean Secrets reales con nombres
+   de clave como `db-password` → las propias claves objetivo de la política.
+   En Enforce, con `creationPolicy: Owner` en
+   `example-external-secret.yaml`, el Secret del controlador sería
+   **rechazado en la admisión y la plataforma se rompe**.
+2. **Precedente del repo**: `require-resources` (cluster/base/kyverno) se
+   entrega en Audit hasta que cada workload cumpla — misma regla conservadora.
+3. **Contexto de formación**: la lista regex de claves es un punto de partida;
+   un estudiante debe tuneearla a su inventario real de claves antes de que
+   pueda bloquear de forma segura.
 
-Available control loop for students: watch policy reports
-(`kubectl get policyreport -n ecommerce`) → tune → uncomment the
-`app.kubernetes.io/managed-by: external-secrets-operator` exclude → flip
-`validationFailureAction: Enforce` → watch admission. Document the flip in your
-TP report — that IS the deliverable.
+Loop de control disponible para estudiantes: mirar los policy reports
+(`kubectl get policyreport -n ecommerce`) → tuneear → descomentar el exclude
+de `app.kubernetes.io/managed-by: external-secrets-operator` → dar vuelta a
+`validationFailureAction: Enforce` → observar la admisión. Documentá el
+cambio en tu reporte del TP — ese ES el entregable.
 
-## Interaction with the Phase 3 platform pieces
+## Interacción con las piezas de plataforma de la Fase 3
 
-- **ClusterSecretStore / examples** (`cluster/base/external-secrets/`): source
-  of truth for where credentials come from. This directory only *guards* the
-  result.
-- **Kyverno** (`cluster/base/kyverno/policies/`): the existing three policies
-  target Pods; this one targets Secrets — complementary, no overlap.
-- **`security/README.md`**: PSA + Kyverno interplay (admission chain order).
+- **ClusterSecretStore / ejemplos** (`cluster/base/external-secrets/`): fuente
+  de verdad de dónde vienen las credenciales. Este directorio solo *custodia*
+  el resultado.
+- **Kyverno** (`cluster/base/kyverno/policies/`): las tres políticas
+  existentes apuntan a Pods; esta apunta a Secrets — complementarias, sin
+  overlap.
+- **`security/README.md`**: interacción de PSA + Kyverno (orden de la cadena
+  de admisión).
 
-## Tuning checklist before Enforce
+## Checklist de tuning antes de Enforce
 
 1. `kubectl get secrets -n ecommerce -o json | jq -r '.items[].data | keys[]'`
-   — inventory real key names; extend the regex base list (e.g. `client_secret`,
-   `connection_string`) or narrow it.
-2. Uncomment the exclude block for ESO-managed Secrets (verify the actual label
-   ESO sets on your version: `kubectl get secret ecommerce-db-credentials -n
-   ecommerce -o jsonpath='{.metadata.labels}'`).
-3. Switch `validationFailureAction: Enforce` in a **dev/staging** namespace
-   first (namespaceSelector currently pins `ecommerce` — widen per env).
-4. Re-run the CD pipeline; if any controller-generated Secret is blocked, the
-   audit loop shows exactly which key matched — tune, don't disable.
+   — inventariá los nombres de clave reales; extendé la lista base de regex
+   (p. ej. `client_secret`, `connection_string`) o achicala.
+2. Descomentá el bloque de exclude para Secrets gestionados por ESO (verificá
+   el label real que ESO setea en tu versión: `kubectl get secret
+   ecommerce-db-credentials -n ecommerce -o jsonpath='{.metadata.labels}'`).
+3. Cambiá `validationFailureAction: Enforce` en un namespace de
+   **dev/staging** primero (el namespaceSelector actual pinnea `ecommerce` —
+   ensanchá por env).
+4. Re-corré el pipeline de CD; si algún Secret generado por un controlador
+   queda bloqueado, el loop de audit muestra exactamente qué clave matcheó —
+   tuneá, no deshabilites.

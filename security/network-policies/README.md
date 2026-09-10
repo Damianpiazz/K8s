@@ -1,17 +1,18 @@
-# security/network-policies — namespace-level safety net
+# security/network-policies — red de seguridad a nivel de namespace
 
-## What is here
+## Qué hay acá
 
-| File | What it does |
+| Archivo | Qué hace |
 |---|---|
-| `default-deny-all.yaml` | Namespace-wide default-deny (ingress + egress) for `ecommerce`: every pod without a per-service NetworkPolicy is denied both directions. |
-| `kustomization.yaml` | Aggregates the above for the `security/` tree. |
+| `default-deny-all.yaml` | Default-deny a nivel de namespace (ingress + egress) para `ecommerce`: todo pod sin NetworkPolicy por servicio es denegado en ambas direcciones. |
+| `kustomization.yaml` | Agrega lo de arriba para el árbol de `security/`. |
 
-## What is intentionally NOT here — `allow-kube-system-dns.yaml` (SKIPPED)
+## Qué NO está acá intencionalmente — `allow-kube-system-dns.yaml` (OMITIDO)
 
-The original brief proposed an ecommerce-wide egress rule to `kube-dns`
-(53/tcp+udp) "so existing per-service policies still work". **Verified
-redundant — every per-service NetworkPolicy already grants DNS egress.** Example
+El brief original proponía una regla de egress a nivel de ecommerce hacia
+`kube-dns` (53/tcp+udp) "para que las políticas existentes por servicio sigan
+funcionando". **Verificado como redundante — cada NetworkPolicy por servicio ya
+otorga egress de DNS.** Ejemplo
 (`services/catalog-svc/k8s/base/networkpolicy.yaml`):
 
 ```yaml
@@ -24,36 +25,40 @@ egress:
         - { port: 53, protocol: TCP }
 ```
 
-and the services are built from the **exact same layout** (services/README.md),
-so adding a separate `allow-kube-system-dns` would only duplicate those rules.
-The default-deny safety net does not break DNS for services with a per-service
-policy (their egress rules still apply via union semantics).
+y los servicios están construidos con **exactamente el mismo layout**
+(services/README.md), así que agregar un `allow-kube-system-dns` separado solo
+duplicaría esas reglas. La red de seguridad default-deny no rompe el DNS de los
+servicios con política por servicio (sus reglas de egress siguen aplicando via
+semántica de unión).
 
-**If a future workload in `ecommerce` needs DNS but has no per-service policy**,
-it must define its own egress (or an explicit `allow-kube-system-dns`
-namespace-wide rule can be added here then). This matches the "one service =
-one NetworkPolicy" philosophy of the repo.
+**Si un workload futuro en `ecommerce` necesita DNS pero no tiene política por
+servicio**, debe definir su propio egress (o se puede agregar una regla
+namespace-wide explícita `allow-kube-system-dns` acá entonces). Esto coincide
+con la filosofía del repo de "un servicio = una NetworkPolicy".
 
-## Interaction with existing per-service policies
+## Interacción con las políticas existentes por servicio
 
-- Union semantics: covered pods keep their full per-service allow-lists.
-- Uncovered pods: total isolation — no ingress, no egress (including DNS, so
-  they cannot even resolve peers until someone writes their policy).
+- Semántica de unión: los pods cubiertos mantienen sus allow-lists completos
+  por servicio.
+- Pods no cubiertos: aislamiento total — sin ingress, sin egress (incluido
+  DNS, así que ni siquiera pueden resolver peers hasta que alguien escriba su
+  política).
 
-## Caveats (pre-existing, not introduced by this file)
+## Caveats (preexistentes, no introducidos por este archivo)
 
-1. **kubelet probes** — readiness/liveness HTTP probes originate from the node;
-   a strict ingress policy CAN block them (documented Kubernetes limitation).
-   The per-service policies already have this shape, so the safety net does not
-   make it worse. If probes break on your CNI, allow the node CIDR explicitly
-   in the per-service ingress.
-2. **In-cluster service-to-service traffic** — the per-service policies allow
-   ecommerce peers via `namespaceSelector: ecommerce` +
-   `app.kubernetes.io/part-of: ecommerce-platform` (catalog-svc example). New
-   services MUST replicate that egress or they cannot reach their peers.
+1. **Probes de kubelet** — las probes HTTP de readiness/liveness se originan
+   en el nodo; una política de ingress estricta PUEDE bloquearlas (limitación
+   documentada de Kubernetes). Las políticas por servicio ya tienen esta forma,
+   así que la red de seguridad no la empeora. Si las probes se rompen en tu
+   CNI, permití el CIDR del nodo explícitamente en el ingress por servicio.
+2. **Tráfico service-to-service in-cluster** — las políticas por servicio
+   permiten pares de ecommerce via `namespaceSelector: ecommerce` +
+   `app.kubernetes.io/part-of: ecommerce-platform` (ejemplo de catalog-svc).
+   Los servicios NUEVOS deben replicar ese egress o no podrán alcanzar sus
+   peers.
 
-## Verified against
+## Verificado contra
 
-- `services/catalog-svc/k8s/base/networkpolicy.yaml` (DNS egress + peer egress + observability ingress)
-- `services/README.md` (uniform layout across all 17 services)
-- `cluster/base/kyverno/policies/require-labels.yaml` (namespace exclusions — chart namespaces not enforced)
+- `services/catalog-svc/k8s/base/networkpolicy.yaml` (egress de DNS + egress de peers + ingress de observability)
+- `services/README.md` (layout uniforme en los 17 servicios)
+- `cluster/base/kyverno/policies/require-labels.yaml` (exclusiones de namespaces — namespaces de charts no enforceados)

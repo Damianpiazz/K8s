@@ -1,46 +1,49 @@
-# observability/otel — OTLP wiring: guidance only
+# observability/otel — Wiring OTLP: solo guía
 
-## Decision: no sidebar, no fallback collector, no reinvented agent
+## Decisión: sin sidecar, sin collector de fallback, sin agente reinventado
 
-The Phase 8 brief considered a "fallback to OTLP if the cluster doesn't have
-ServiceMonitor CRDs". That fallback is **not needed**:
+El brief de la Fase 8 consideró un "fallback a OTLP si el clúster no tiene
+CRDs de ServiceMonitor". Ese fallback **no es necesario**:
 
-1. **ServiceMonitor CRDs exist** — the kube-prometheus-stack chart (Phase 3)
-   installs them, and the deployed values open
+1. **Los CRDs de ServiceMonitor existen** — el chart de kube-prometheus-stack
+   (Fase 3) los instala, y los values desplegados abren
    `serviceMonitorSelector` / `serviceMonitorNamespaceSelector`
    (`cluster/base/monitoring/kube-prometheus-stack/values.yaml`).
-2. **The OTLP endpoint already exists** — the Phase 3 OpenTelemetry Collector
-   (`cluster/base/monitoring/opentelemetry-collector/collector.yaml` + `service.yaml`)
-   listens on `:4317` (gRPC) and `:4318` (HTTP) in the `observability` namespace.
-3. **The metrics path is already wired** — every service pom declares
-   `spring-boot-starter-actuator` + `micrometer-registry-prometheus` (verified
-   across all 17 `services/*/pom.xml`), which is exactly what the ServiceMonitors
-   in `../servicemonitors` scrape at `/actuator/prometheus`.
+2. **El endpoint OTLP ya existe** — el OpenTelemetry Collector de la Fase 3
+   (`cluster/base/monitoring/opentelemetry-collector/collector.yaml` +
+   `service.yaml`) escucha en `:4317` (gRPC) y `:4318` (HTTP) en el namespace
+   `observability`.
+3. **El path de métricas ya está cableado** — cada pom de servicio declara
+   `spring-boot-starter-actuator` + `micrometer-registry-prometheus` (verificado
+   en los 17 `services/*/pom.xml`), que es exactamente lo que los
+   ServiceMonitors de `../servicemonitors` scrapean en `/actuator/prometheus`.
 
-## What this directory contains
+## Qué contiene este directorio
 
-- `otel-env.yaml` — a NOT-applied reference ConfigMap documenting the env vars
-  a service needs to export OTLP (metrics/traces) to the collector, with the
-  correct in-cluster endpoint:
+- `otel-env.yaml` — un ConfigMap de referencia NO aplicado que documenta las
+  env vars que un servicio necesita para exportar OTLP (métricas/traces) al
+  collector, con el endpoint in-cluster correcto:
   `http://otel-collector.observability.svc.cluster.local:4317`.
 
-## What students need to do (application-side, not this directory)
+## Qué necesitan hacer los estudiantes (lado aplicación, no este directorio)
 
-- For **OTLP metrics**: add `micrometer-registry-otlp` to the service pom and
-  set `OTEL_METRICS_EXPORTER=otlp` (+ `OTEL_EXPORTER_OTLP_ENDPOINT`). Micrometer
-  then pushes to the collector's `prometheus` exporter (`:8889`), so the metrics
-  ALSO land in Prometheus without a ServiceMonitor change.
-- For **traces**: add the OpenTelemetry Java agent to the runtime image
-  (`-javaagent:...`) with `OTEL_TRACES_EXPORTER=otlp`. The collector forwards
-  traces to `otlphttp/tempo` (a placeholder until Tempo is deployed, see the
-  collector ConfigMap comments).
-- The existing Prometheus scrape remains the source of truth for the
-  dashboards/alerts in this tree — OTLP is additive, not a replacement.
+- Para **métricas OTLP**: agregá `micrometer-registry-otlp` al pom del
+  servicio y seteá `OTEL_METRICS_EXPORTER=otlp` (+
+  `OTEL_EXPORTER_OTLP_ENDPOINT`). Micrometer después empuja al exporter
+  `prometheus` del collector (`:8889`), así que las métricas TAMBIÉN llegan a
+  Prometheus sin cambiar el ServiceMonitor.
+- Para **traces**: agregá el agente Java de OpenTelemetry a la imagen del
+  runtime (`-javaagent:...`) con `OTEL_TRACES_EXPORTER=otlp`. El collector
+  reenvía los traces a `otlphttp/tempo` (un placeholder hasta que Tempo esté
+  desplegado, ver los comentarios del ConfigMap del collector).
+- El scrape de Prometheus existente sigue siendo la fuente de verdad para los
+  dashboards/alertas de este árbol — OTLP es aditivo, no un reemplazo.
 
-## Why NO agent sidecar manifest here
+## Por qué NO hay manifiesto de sidecar de agente acá
 
-An `otel-agent-sidecar.yaml` would duplicate infrastructure the collector
-already provides (it IS the agent for the cluster). The per-service change is
-two pom lines + a few env vars — a sidecar would force image changes and
-double the Java agent memory footprint on a $0-budget demo cluster. If a
-future service cannot be instrumented at the app level, re-evaluate then.
+Un `otel-agent-sidecar.yaml` duplicaría infraestructura que el collector ya
+provee (él ES el agente del clúster). El cambio por servicio es dos líneas de
+pom + unas pocas env vars — un sidecar forzaría cambios de imagen y duplicaría
+el footprint de memoria del agente Java en un clúster de demo con presupuesto
+$0. Si un servicio futuro no se puede instrumentar a nivel de app,
+re-evaluamos entonces.

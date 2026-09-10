@@ -1,74 +1,78 @@
-# scripts/ — Operational helpers (Phase 9)
+# scripts/ — Helpers operacionales (Fase 9)
 
-Local utilities for the e-commerce platform: cluster bootstrap, environment
-deploys, Azure login, Argo CD operations and manifest/test validation. The
-**primary path** for this course is PowerShell on Windows (all `.ps1` files);
-the `.sh` twins are Linux/macOS equivalents for anyone working outside Windows.
+Utilidades locales para la plataforma e-commerce: bootstrap de clúster,
+despliegues por ambiente, login de Azure, operaciones de Argo CD y validación
+de manifiestos/tests. El **camino primario** del curso es PowerShell en
+Windows (todos los archivos `.ps1`); los gemelos `.sh` son equivalentes para
+Linux/macOS para cualquiera que trabaje fuera de Windows.
 
-> Everything here is a **convenience wrapper around commands already documented
-> in the repo** (`cluster/base/README.md`, `cluster/overlays/README.md`,
-> `.github/workflows/*.yml`). The real deployment pipeline remains GitHub
-> Actions (`cd.yml`); the scripts let a human do the same steps by hand.
+> Todo lo de acá es un **wrapper de conveniencia alrededor de comandos ya
+> documentados en el repo** (`cluster/base/README.md`,
+> `cluster/overlays/README.md`, `.github/workflows/*.yml`). El pipeline de
+> despliegue real sigue siendo GitHub Actions (`cd.yml`); los scripts le
+> permiten a un humano hacer los mismos pasos a mano.
 
-## Script matrix
+## Matriz de scripts
 
-| Script | What it does | Requires |
+| Script | Qué hace | Requiere |
 |---|---|---|
-| `bootstrap/minikube-start.ps1` / `.sh` | Start Minikube (profile `ecommerce`, docker driver, cpus/memory), enable `ingress` + `metallb` addons, wait for cluster + ingress-nginx Ready | minikube, kubectl, Docker |
-| `bootstrap/kind-start.ps1` / `.sh` | Create a Kind cluster (`ecommerce`) with the ingress-ready node + host port 80/443 mappings, install the official kind ingress-nginx manifest, wait for it | kind, kubectl, Docker |
-| `bootstrap/kustomize-render.ps1` / `.sh` | Render `cluster/overlays/<env>` to a single multi-doc YAML (`kustomize build`, `kubectl kustomize` fallback) for inspection — same render Argo CD does | kubectl (kustomize optional) |
-| `deploy/apply-overlay.ps1` / `.sh` | Pre-checks (kubectl present, overlay exists, kustomize renders clean) then `kubectl apply -k cluster/overlays/<env>`; warns about the Kyverno `disallow-latest-tag` gate | kubectl, (kustomize optional) |
-| `deploy/bootstrap-argocd.ps1` / `.sh` | Install Argo CD (`cluster/base/argocd/install`, official-manifest fallback), wait for `argocd-server`, print `argocd-initial-admin-secret`, open port-forward to the UI, print the remaining bootstrap steps | kubectl |
-| `deploy/sync-argocd-app.ps1` / `.sh` | `argocd app sync <name> --prune` + status — manual twin of the CD Argo CD job | argocd CLI |
-| `azure/az-login.ps1` / `.sh` | `az login` → `az account set` (subscription from param) → `az aks get-credentials`; optional `-UseTerraformOutputs` reads RG/cluster name from `terraform output` | az CLI (+ kubectl, optional terraform) |
-| `azure/deploy-cd-manual.ps1` | Manual fallback for `cd.yml`: `az acr login`, `docker build`+`push` per service, rewrite `newTag` in the overlay by matching `newName == <acr>.azurecr.io/<svc>` (same contract as the yq step in cd.yml) | az CLI, docker, git |
-| `tests/run-unit-tests.ps1` / `.sh` | `mvn -B test` per service (`mvnw` fallback), per-service pass/fail report, non-zero exit on failure | Java 17, Maven |
-| `tests/validate-manifests.ps1` / `.sh` | YAML parse check (all `.yaml`/`.yml` via python) + `kustomize build` across `cluster/` + `services/` + `observability/` + `security/` | python + pyyaml, (kustomize or kubectl optional) |
+| `bootstrap/minikube-start.ps1` / `.sh` | Arranca Minikube (profile `ecommerce`, driver docker, cpus/memory), habilita los addons `ingress` + `metallb`, espera al clúster + ingress-nginx Ready | minikube, kubectl, Docker |
+| `bootstrap/kind-start.ps1` / `.sh` | Crea un clúster Kind (`ecommerce`) con el nodo ingress-ready + mapeos de host port 80/443, instala el manifiesto oficial de ingress-nginx de kind, espera por él | kind, kubectl, Docker |
+| `bootstrap/kustomize-render.ps1` / `.sh` | Renderiza `cluster/overlays/<env>` a un YAML multi-doc único (`kustomize build`, fallback `kubectl kustomize`) para inspección — el mismo render que hace Argo CD | kubectl (kustomize opcional) |
+| `deploy/apply-overlay.ps1` / `.sh` | Pre-chequeos (kubectl presente, overlay existe, kustomize renderiza limpio) y después `kubectl apply -k cluster/overlays/<env>`; avisa sobre el gate `disallow-latest-tag` de Kyverno | kubectl, (kustomize opcional) |
+| `deploy/bootstrap-argocd.ps1` / `.sh` | Instala Argo CD (`cluster/base/argocd/install`, fallback con manifiesto oficial), espera a `argocd-server`, imprime `argocd-initial-admin-secret`, abre port-forward a la UI, imprime los pasos restantes del bootstrap | kubectl |
+| `deploy/sync-argocd-app.ps1` / `.sh` | `argocd app sync <name> --prune` + estado — gemelo manual del job de Argo CD del CD | CLI de argocd |
+| `azure/az-login.ps1` / `.sh` | `az login` → `az account set` (suscripción por parámetro) → `az aks get-credentials`; `-UseTerraformOutputs` opcional lee el nombre de RG/clúster de `terraform output` | CLI de az (+ kubectl, terraform opcional) |
+| `azure/deploy-cd-manual.ps1` | Fallback manual de `cd.yml`: `az acr login`, `docker build`+`push` por servicio, reescribe `newTag` en el overlay matcheando `newName == <acr>.azurecr.io/<svc>` (mismo contrato que el paso yq de cd.yml) | CLI de az, docker, git |
+| `tests/run-unit-tests.ps1` / `.sh` | `mvn -B test` por servicio (fallback `mvnw`), reporte de pass/fail por servicio, exit no-cero en falla | Java 17, Maven |
+| `tests/validate-manifests.ps1` / `.sh` | Chequeo de parseo YAML (todos los `.yaml`/`.yml` via python) + `kustomize build` en `cluster/` + `services/` + `observability/` + `security/` | python + pyyaml, (kustomize o kubectl opcional) |
 
-## Requirements
+## Requerimientos
 
-| Tool | Used by | Install (Windows) |
+| Tool | Usado por | Instalar (Windows) |
 |---|---|---|
-| `kubectl` | all deploy/apply/render scripts | `winget install Kubernetes.kubectl` or via Docker Desktop |
+| `kubectl` | todos los scripts de deploy/apply/render | `winget install Kubernetes.kubectl` o via Docker Desktop |
 | `minikube` | minikube-start | `winget install minikube` |
-| `kind` | kind-start | `winget install kind` (or `go install sigs.k8s.io/kind@latest`) |
-| `kustomize` | render/apply/validate (optional — `kubectl kustomize` fallback) | `winget install kustomize` |
-| `argocd` (CLI) | sync-argocd-app | see <https://argo-cd.readthedocs.io/en/stable/cli_installation/> |
+| `kind` | kind-start | `winget install kind` (o `go install sigs.k8s.io/kind@latest`) |
+| `kustomize` | render/apply/validate (opcional — fallback `kubectl kustomize`) | `winget install kustomize` |
+| `argocd` (CLI) | sync-argocd-app | ver <https://argo-cd.readthedocs.io/en/stable/cli_installation/> |
 | `az` (Azure CLI) | az-login, deploy-cd-manual | `winget install Microsoft.AzureCLI` |
-| `docker` | minikube/kind drivers, deploy-cd-manual | Docker Desktop |
-| `python` + `pyyaml` | tests/ python checks | `python -m pip install pyyaml` |
-| Java 17 + Maven | run-unit-tests | `winget install Oracle.JDK.17` / Maven zip on PATH (or add `mvnw`) |
-| `terraform` | az-login `-UseTerraformOutputs` (optional) | `winget install Hashicorp.Terraform` |
+| `docker` | drivers de minikube/kind, deploy-cd-manual | Docker Desktop |
+| `python` + `pyyaml` | chequeos python de tests/ | `python -m pip install pyyaml` |
+| Java 17 + Maven | run-unit-tests | `winget install Oracle.JDK.17` / zip de Maven en PATH (o agregá `mvnw`) |
+| `terraform` | az-login `-UseTerraformOutputs` (opcional) | `winget install Hashicorp.Terraform` |
 
-## Environment consistent paths
+## Paths consistentes en los ambientes
 
-All scripts resolve the repo root relative to their own location
-(`$PSScriptRoot` / `$(dirname "$0")`), so they work from **any** working
-directory. Rendered output goes to the OS temp dir by default — never into the
-repo (`build/` and similar are not git-ignored on purpose).
+Todos los scripts resuelven la raíz del repo relativa a su propia ubicación
+(`$PSScriptRoot` / `$(dirname "$0")`), así que funcionan desde **cualquier**
+directorio de trabajo. El output renderizado va al temp dir del OS por
+defecto — nunca al repo (`build/` y similares no están git-ignored a
+propósito).
 
-## Placeholders you MUST replace
+## Placeholders que DEBES reemplazar
 
-| Placeholder | Where | What to put |
+| Placeholder | Dónde | Qué poner |
 |---|---|---|
-| `acr.azurecr.io` (scripts use `-Acr acr` by default) | `deploy-cd-manual.ps1 -Acr` and every `cluster/overlays/*/kustomization.yaml` `newName` | your ACR login server (match the overlay's `newName`) |
-| `rg-ecommerce-<env>-PLACEHOLDER` / `aks-ecommerce-<env>-PLACEHOLDER` | `az-login.ps1/.sh` defaults | real RG / cluster name — or use `-UseTerraformOutputs` |
-| `-SubscriptionId <ID>` | `az-login.ps1/.sh` | `az account list -o table` output |
-| `api.<domain>` (in manifests) | not a script placeholder — ingress host | your DNS zone (external-dns) |
-| `argocd-initial-admin-secret` password | printed by `bootstrap-argocd` | change it on first login |
+| `acr.azurecr.io` (los scripts usan `-Acr acr` por defecto) | `deploy-cd-manual.ps1 -Acr` y el `newName` de cada `cluster/overlays/*/kustomization.yaml` | tu ACR login server (matcheá el `newName` del overlay) |
+| `rg-ecommerce-<env>-PLACEHOLDER` / `aks-ecommerce-<env>-PLACEHOLDER` | defaults de `az-login.ps1/.sh` | nombre real de RG / clúster — o usá `-UseTerraformOutputs` |
+| `-SubscriptionId <ID>` | `az-login.ps1/.sh` | output de `az account list -o table` |
+| `api.<domain>` (en manifiestos) | no es placeholder de script — host del ingress | tu zona DNS (external-dns) |
+| password de `argocd-initial-admin-secret` | lo imprime `bootstrap-argocd` | cambiarlo en el primer login |
 
-## Notes
+## Notas
 
-- **PowerShell first**: the `.ps1` files are the reference implementations
-  (Windows course). The `.sh` files mirror them 1:1 with bash 3.2+ syntax —
-  report drift as a bug.
-- **No secrets**: scripts never read or write credentials; they call `az login`
-  / `docker login` / `argocd login` interactively. GitHub secret names from the
-  cloud pipeline (`ACR_PASSWORD`, `ARGOCD_AUTH_PASSWORD`, …) do NOT belong in
-  any of these scripts.
-- **Kyverno gate**: `cluster/base/kyverno` enforces `disallow-latest-tag` in
-  `ecommerce`. Manual applies with `:latest` images are rejected — run
-  `deploy-cd-manual.ps1` (or the CD pipeline) to pin real tags first.
-- **CI wiring**: `tests/validate-manifests.ps1` and the python checks in
-  `tests/manifests/` overlap with the `ci.yml` lint jobs. Nothing here edits
-  `.github/` — wiring these into CI is a later, deliberate change.
+- **PowerShell primero**: los `.ps1` son las implementaciones de referencia
+  (curso de Windows). Los `.sh` los reflejan 1:1 con sintaxis bash 3.2+ —
+  reportá drift como bug.
+- **Sin secretos**: los scripts nunca leen ni escriben credenciales; llaman
+  `az login` / `docker login` / `argocd login` interactivamente. Los nombres de
+  secretos de GitHub del pipeline cloud (`ACR_PASSWORD`,
+  `ARGOCD_AUTH_PASSWORD`, …) NO van en ninguno de estos scripts.
+- **Gate de Kyverno**: `cluster/base/kyverno` enforcea `disallow-latest-tag`
+  en `ecommerce`. Los applies manuales con imágenes `:latest` se rechazan —
+  corré `deploy-cd-manual.ps1` (o el pipeline de CD) para fijar tags reales
+  primero.
+- **Wiring de CI**: `tests/validate-manifests.ps1` y los chequeos python de
+  `tests/manifests/` se superponen con los jobs de lint de `ci.yml`. Nada de
+  acá edita `.github/` — cablearlos al CI es un cambio posterior, deliberado.
