@@ -70,7 +70,7 @@ public class AnalyticsService {
     /** Most viewed products by event count, capped at the limit. */
     public List<TopProduct> topProducts(int limit) {
         return productCounts.entrySet().stream()
-                .sorted(Comparator.<Map.Entry<Long, AtomicLong>>comparingByValue(
+                .sorted(Map.Entry.<Long, AtomicLong>comparingByValue(
                                 Comparator.comparingLong(AtomicLong::get))
                         .reversed()
                         .thenComparing(Map.Entry::getKey))
