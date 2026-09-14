@@ -1,0 +1,305 @@
+---
+# Kustomize overlay — LOCAL (emulador Floci-AZ).
+#
+# Espejo del overlay DEV con estas diferencias (plan-implementacion 4.1):
+#   - `resources: - ../../base` (el mismo base que dev) PERO con delete
+#     patches que sacan: las Argo CD Applications (app-of-apps + plataforma +
+#     ambiente — el bootstrap local aplica componentes directo), external-dns
+#     (apunta a DNS de Azure; descartado en local) y el example-external-secret
+#     (en local el ClusterSecretStore apunta al Key Vault emulado por floci).
+#   - ClusterIssuer letsencrypt-default -> selfsigned (sin internet)
+#   - ClusterSecretStore vault URL -> https://host.docker.internal:4577/<kv>
+#   - ecommerce-env-config -> hosts host.docker.internal (sidecars en el host)
+#   - images -> host.docker.internal:5000/localecommercefloci01/<svc>
+#
+# Uso:
+#   kubectl apply -k cluster/overlays/local
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # ── Base completo (igual que dev) ──────────────────────────────────────
+  - ../../base
+  # ── Overlay local ───────────────────────────────────────────────────────
+  - issuer-default.yaml
+  - env-config.yaml
+
+  # ── Services (Phase 5 — core; cada servicio usa sus manifests BASE) ────
+  - ../../../services/config-service/k8s/base
+  - ../../../services/discovery-service/k8s/base
+  - ../../../services/api-gateway/k8s/base
+  - ../../../services/auth/k8s/base
+  - ../../../services/catalog-svc/k8s/base
+  - ../../../services/cart-svc/k8s/base
+  # ── Services (Phase 6 — business) ───────────────────────────────────────
+  - ../../../services/checkout-svc/k8s/base
+  - ../../../services/order-svc/k8s/base
+  - ../../../services/payment-svc/k8s/base
+  - ../../../services/notification-svc/k8s/base
+  - ../../../services/bff-web/k8s/base
+  # ── Services (Phase 7 — extra) ──────────────────────────────────────────
+  - ../../../services/search-svc/k8s/base
+  - ../../../services/recommendation-svc/k8s/base
+  - ../../../services/inventory-svc/k8s/base
+  - ../../../services/shipping-svc/k8s/base
+  - ../../../services/returns-svc/k8s/base
+  - ../../../services/analytics-svc/k8s/base
+  - ../../../services/frontend/k8s/base
+  # ── Observability / Security app layers ─────────────────────────────────
+  - ../../../observability
+  - ../../../security
+
+patches:
+  # Patch del ClusterSecretStore azure-keyvault -> Key Vault emulado por floci
+  - target:
+      kind: ClusterSecretStore
+      name: azure-keyvault
+    path: patches/secret-store-patch.yaml
+
+  # ── Excluidos del base (local) ──────────────────────────────────────────
+  # Argo CD Applications: en local el bootstrap aplica componentes directo.
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: ecommerce-apps
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: ecommerce-apps
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: ingress-nginx
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: ingress-nginx
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: cert-manager
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: cert-manager
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: external-dns
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: external-dns
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: external-secrets
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: external-secrets
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: kyverno
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: kyverno
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: keda
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: keda
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: kube-prometheus-stack
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: kube-prometheus-stack
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: ecommerce-dev
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: ecommerce-dev
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: ecommerce-staging
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: ecommerce-staging
+      $patch: delete
+  - target:
+      kind: Application
+      group: argoproj.io
+      version: v1alpha1
+      name: ecommerce-prod
+    patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: ecommerce-prod
+      $patch: delete
+
+  # external-dns (DNS de Azure — no aplica en local)
+  - target:
+      kind: ServiceAccount
+      name: external-dns
+    patch: |-
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: external-dns
+      $patch: delete
+  - target:
+      kind: ClusterRole
+      name: external-dns
+    patch: |-
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        name: external-dns
+      $patch: delete
+  - target:
+      kind: ClusterRoleBinding
+      name: external-dns-viewer
+    patch: |-
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: external-dns-viewer
+      $patch: delete
+  - target:
+      kind: Secret
+      name: azure-config-file
+    patch: |-
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: azure-config-file
+      $patch: delete
+  - target:
+      kind: Deployment
+      name: external-dns
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: external-dns
+      $patch: delete
+
+  # example-external-secret (requiere el Key Vault real)
+  - target:
+      kind: ExternalSecret
+      group: external-secrets.io
+      version: v1beta1
+      name: ecommerce-db-credentials
+    patch: |-
+      apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
+      metadata:
+        name: ecommerce-db-credentials
+      $patch: delete
+
+# Pod Security (PSA) labels — igual que dev.
+components:
+  - ../../../security/pod-security
+
+# ── Image tags ─────────────────────────────────────────────────────────────
+# Registry local = sidecar ACR de floci. Los contenedores k3s acceden al
+# host via host.docker.internal (plan-implementacion 4.1).
+# El tag por default es <sha> — lo pisa el deploy o el script build-push.
+images:
+  - name: acr.azurecr.io/config-service
+    newName: host.docker.internal:5000/localecommercefloci01/config-service
+    newTag: latest
+  - name: acr.azurecr.io/discovery-service
+    newName: host.docker.internal:5000/localecommercefloci01/discovery-service
+    newTag: latest
+  - name: acr.azurecr.io/api-gateway
+    newName: host.docker.internal:5000/localecommercefloci01/api-gateway
+    newTag: latest
+  - name: acr.azurecr.io/auth
+    newName: host.docker.internal:5000/localecommercefloci01/auth
+    newTag: latest
+  - name: acr.azurecr.io/catalog-svc
+    newName: host.docker.internal:5000/localecommercefloci01/catalog-svc
+    newTag: latest
+  - name: acr.azurecr.io/cart-svc
+    newName: host.docker.internal:5000/localecommercefloci01/cart-svc
+    newTag: latest
+  - name: acr.azurecr.io/checkout-svc
+    newName: host.docker.internal:5000/localecommercefloci01/checkout-svc
+    newTag: latest
+  - name: acr.azurecr.io/order-svc
+    newName: host.docker.internal:5000/localecommercefloci01/order-svc
+    newTag: latest
+  - name: acr.azurecr.io/payment-svc
+    newName: host.docker.internal:5000/localecommercefloci01/payment-svc
+    newTag: latest
+  - name: acr.azurecr.io/notification-svc
+    newName: host.docker.internal:5000/localecommercefloci01/notification-svc
+    newTag: latest
+  - name: acr.azurecr.io/search-svc
+    newName: host.docker.internal:5000/localecommercefloci01/search-svc
+    newTag: latest
+  - name: acr.azurecr.io/recommendation-svc
+    newName: host.docker.internal:5000/localecommercefloci01/recommendation-svc
+    newTag: latest
+  - name: acr.azurecr.io/inventory-svc
+    newName: host.docker.internal:5000/localecommercefloci01/inventory-svc
+    newTag: latest
+  - name: acr.azurecr.io/shipping-svc
+    newName: host.docker.internal:5000/localecommercefloci01/shipping-svc
+    newTag: latest
+  - name: acr.azurecr.io/returns-svc
+    newName: host.docker.internal:5000/localecommercefloci01/returns-svc
+    newTag: latest
+  - name: acr.azurecr.io/analytics-svc
+    newName: host.docker.internal:5000/localecommercefloci01/analytics-svc
+    newTag: latest
+  - name: acr.azurecr.io/bff-web
+    newName: host.docker.internal:5000/localecommercefloci01/bff-web
+    newTag: latest
+  - name: acr.azurecr.io/frontend
+    newName: host.docker.internal:5000/localecommercefloci01/frontend
+    newTag: latest

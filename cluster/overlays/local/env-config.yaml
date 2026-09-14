@@ -1,0 +1,35 @@
+---
+# Per-environment ConfigMap — LOCAL (emulador Floci-AZ).
+#
+# Los services consumen esto via envFrom en sus Deployments.
+# En local los sidecars (postgres, valkey, redpanda) bindean puertos del HOST
+# (ports.md) — los pods k3s los alcanzan via host.docker.internal.
+#
+# Nota: el postgres sidecar NO pide credenciales (emulado, tabla vacia) —
+# los services locales usan las credentials in-cluster de data/ o H2.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-env-config
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    env: local
+data:
+  ENVIRONMENT: local
+  LOG_LEVEL: DEBUG
+
+  # ── Data connections (sidecars en el host) ─────────────────────────────
+  DB_HOST: host.docker.internal
+  DB_PORT: "5432"
+  DB_NAME: ecommerce
+  REDIS_HOST: host.docker.internal
+  REDIS_PORT: "6379"                    # valkey local sin TLS
+
+  # ── Messaging (Event Hubs emulado / Kafka endpoint del sidecar) ────────
+  KAFKA_BOOTSTRAP: host.docker.internal:9093
+  KAFKA_SECURITY_PROTOCOL: PLAINTEXT    # local sin SASL_SSL
+
+  # ── Feature flags (local extras) ───────────────────────────────────────
+  ENABLE_SWAGGER: "true"
+  ENABLE_MOCK_DATA: "true"
