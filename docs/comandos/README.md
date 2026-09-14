@@ -29,6 +29,7 @@ kubectl [comando] [tipo de recurso] [nombre] [flags]
 | [07-almacenamiento.md](07-almacenamiento.md) | Volúmenes | PV y PVC |
 | [08-salud-y-monitoreo.md](08-salud-y-monitoreo.md) | Health checks | probes, eventos, diagnóstico |
 | [09-operaciones-avanzadas.md](09-operaciones-avanzadas.md) | Operaciones | apply, explain, get events |
+| [10-despliegue-paso-a-paso.md](10-despliegue-paso-a-paso.md) | Despliegue | guía completa: Terraform, ACR, overlays, Argo CD, verificación |
 
 ## Consejos generales
 
