@@ -1,0 +1,17 @@
+# Gitleaks configuration — extends the default rule set.
+#
+# docs/floci/ documents the Floci-AZ Azure emulator. It reproduces Azure's
+# WELL-KNOWN development keys (Azurite / Cosmos DB emulator), which are public
+# constants shipped by the emulators — not real credentials. They are required
+# verbatim for copy-paste connection strings against the local emulator
+# (host.docker.internal:4577). Keeping them allows the CI secret scan to pass
+# while the default rules stay fully active for everything else.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Well-known Azure emulator development keys (Azurite / Cosmos DB) used in docs/floci — public constants, not secrets"
+regexes = [
+  'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMh0==',
+  'C2y6yDjf5/R\+ob0N8A7Cgv30VRDJIWEHLM',
+]
