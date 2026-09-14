@@ -1,0 +1,57 @@
+# ---------------------------------------------------------------------------
+# Floci-AZ — emulador local de Azure (Fase 1 del plan-implementacion).
+#
+# Levanta el emulador en localhost:4577 con TLS, storage hibrido persistente
+# y los sidecars de AKS/ACR/Postgres/Redis/Event Hubs listos para arrancar.
+#
+# Uso:
+#   docker compose -f docs/floci/docker-compose.yml up -d
+#   (verifica TLS:  Invoke-RestMethod https://localhost:4577/_floci/health)
+#
+# Referencias:
+#   - docs/floci/plan-implementacion.md  -> Fase 1 (1.1 Compose local)
+#   - docs/floci/ports.md                -> puertos de los sidecars (NO publicarlos aca)
+#   - docs/floci/storage.md              -> modos de storage
+# ---------------------------------------------------------------------------
+
+name: floci-az
+
+services:
+  floci-az:
+    # verificar tag: :latest puede no ser 0.12.0 (por verificar — pin uno estable
+    # cuando haya una version confirmada del emulador)
+    image: floci/floci-az:latest
+    container_name: floci-az
+    restart: unless-stopped
+    ports:
+      - "4577:4577"                   # management HTTP+HTTPS (protocol-sniffing)
+      - "6443-6450:6443-6450"         # rango de API servers k3s (AKS) — aks.md
+      # NOTA: los sidecars (k3s, postgres, valkey, registry, redpanda, artemis)
+      # bindean puertos del host DIRECTAMENTE via el daemon; NO publicarlos aca
+      # (ports.md). ACR=5000, Redis=6379, Kafka=9093, AMQP=5672, Postgres=5432.
+    volumes:
+      - ./data:/app/data              # persistencia (storage) + cert TLS + firma Entra
+      - /var/run/docker.sock:/var/run/docker.sock   # REQUERIDO: sidecars reales
+    environment:
+      FLOCI_AZ_STORAGE_MODE: hybrid                  # memory|persistent|hybrid|wal
+      FLOCI_AZ_TLS_ENABLED: "true"                   # req. para azurerm (terraform.md)
+      FLOCI_AZ_HOSTNAME: floci-az
+      FLOCI_AZ_SERVICES_DOCKER_NETWORK: floci_az_default
+      # Event Hubs: Kafka endpoint + topics de la plataforma
+      FLOCI_AZ_SERVICES_EVENT_HUB_ENABLED: "true"
+      FLOCI_AZ_SERVICES_EVENT_HUB_KAFKA_ENABLED: "true"
+      FLOCI_AZ_SERVICES_EVENT_HUB_ENTITIES: "order-events:3,payment-events:3"
+      # consumer groups: FLOCI_AZ_SERVICES_EVENT_HUB_CONSUMER_GROUPS="\$Default,notification-svc"
+      #   (nombre de env por verificar — alternativa: PUT namespaces con consumerGroups, Fase 2.5)
+      # PostgreSQL con puerto deterministico (evita leer /connect cada vez):
+      # FLOCI_AZ_SERVICES_POSTGRES_DEFAULT_PORT: "5432"   (solo si 5432 esta libre)
+      # Ahorro de recursos: deshabilitar servicios que la plataforma NO usa
+      FLOCI_AZ_SERVICES_FUNCTIONS_ENABLED: "false"
+      FLOCI_AZ_SERVICES_COSMOS_ENABLED: "false"
+    networks:
+      - floci_az_default
+
+networks:
+  floci_az_default:
+    name: floci_az_default
+    driver: bridge
