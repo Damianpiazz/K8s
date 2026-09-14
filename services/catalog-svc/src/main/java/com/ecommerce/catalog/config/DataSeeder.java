@@ -26,14 +26,14 @@ public class DataSeeder {
                 return;
             }
             List<Product> seeds = List.of(
-                    new Product("Wireless Mouse MX-10", "Ergonomic 2.4 GHz wireless mouse",
-                            new BigDecimal("29.99"), 120, "Accessories"),
-                    new Product("Mechanical Keyboard K87", "Hot-swappable, RGB, blue switches",
-                            new BigDecimal("89.50"), 45, "Accessories"),
-                    new Product("27\" IPS Monitor", "2560x1440, 75 Hz, factory calibrated",
-                            new BigDecimal("249.00"), 18, "Displays"),
-                    new Product("USB-C Docking Station", "Dual HDMI, 100 W PD, 10 Gbps",
-                            new BigDecimal("139.90"), 30, "Accessories")
+                    new Product("Mouse Inalámbrico MX-10", "Mouse inalámbrico ergonómico de 2,4 GHz",
+                            new BigDecimal("29.99"), 120, "Accesorios"),
+                    new Product("Teclado Mecánico K87", "Hot-swappable, RGB, switches azules",
+                            new BigDecimal("89.50"), 45, "Accesorios"),
+                    new Product("Monitor IPS 27\"", "2560x1440, 75 Hz, calibrado de fábrica",
+                            new BigDecimal("249.00"), 18, "Pantallas"),
+                    new Product("Estación de Acoplamiento USB-C", "Doble HDMI, 100 W PD, 10 Gbps",
+                            new BigDecimal("139.90"), 30, "Accesorios")
             );
             repository.saveAll(seeds);
             log.info("Seeded {} demo products", seeds.size());

@@ -41,7 +41,7 @@ public class NotificationConsumer {
     public void onOrderEvent(String payload) {
         log.info("order-events ← {}", payload);
         notifications.create(NotificationType.ORDER_CONFIRMED, "customer@example.com",
-                "Order update", payload);
+                "Actualización de pedido", payload);
     }
 
     /**
@@ -52,6 +52,6 @@ public class NotificationConsumer {
     public void onPaymentEvent(String payload) {
         log.info("payment-events ← {}", payload);
         notifications.create(NotificationType.PAYMENT_RECEIVED, "customer@example.com",
-                "Payment update", payload);
+                "Actualización de pago", payload);
     }
 }

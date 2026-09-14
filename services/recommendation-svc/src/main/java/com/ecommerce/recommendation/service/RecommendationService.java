@@ -35,14 +35,14 @@ public class RecommendationService {
     }
 
     private static final Map<Long, Product> PRODUCTS = Map.of(
-            1L, new Product(1L, "Wireless Mouse MX-10", "Accessories"),
-            2L, new Product(2L, "Mechanical Keyboard K87", "Accessories"),
-            3L, new Product(3L, "27\" IPS Monitor", "Displays"),
-            4L, new Product(4L, "USB-C Docking Station", "Accessories"),
-            5L, new Product(5L, "Laptop Stand Pro", "Accessories"),
-            6L, new Product(6L, "Webcam HD 1080p", "Accessories"),
-            7L, new Product(7L, "Bluetooth Headset NC", "Audio"),
-            8L, new Product(8L, "Smartwatch S2", "Wearables")
+            1L, new Product(1L, "Mouse Inalámbrico MX-10", "Accesorios"),
+            2L, new Product(2L, "Teclado Mecánico K87", "Accesorios"),
+            3L, new Product(3L, "Monitor IPS 27\"", "Pantallas"),
+            4L, new Product(4L, "Estación de Acoplamiento USB-C", "Accesorios"),
+            5L, new Product(5L, "Soporte para Laptop Pro", "Accesorios"),
+            6L, new Product(6L, "Cámara Web HD 1080p", "Accesorios"),
+            7L, new Product(7L, "Auriculares Bluetooth NC", "Audio"),
+            8L, new Product(8L, "Smartwatch S2", "Vestibles")
     );
 
     private static final Map<String, List<Long>> PURCHASES = Map.of(

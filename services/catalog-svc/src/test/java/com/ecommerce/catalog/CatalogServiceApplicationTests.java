@@ -41,10 +41,10 @@ class CatalogServiceApplicationTests {
         assertThat(products)
                 .extracting(p -> p.get("name"))
                 .contains(
-                        "Wireless Mouse MX-10",
-                        "Mechanical Keyboard K87",
-                        "27\" IPS Monitor",
-                        "USB-C Docking Station");
+                        "Mouse Inalámbrico MX-10",
+                        "Teclado Mecánico K87",
+                        "Monitor IPS 27\"",
+                        "Estación de Acoplamiento USB-C");
     }
 
     @Test

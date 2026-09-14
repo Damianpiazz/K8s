@@ -28,16 +28,16 @@ class SearchServiceApplicationTests {
     @Test
     @SuppressWarnings("unchecked")
     void nameMatchScoresHighest() {
-        ResponseEntity<List> response = rest.getForEntity("/api/search?q=keyboard", List.class);
+        ResponseEntity<List> response = rest.getForEntity("/api/search?q=teclado", List.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotEmpty();
 
         Map<String, Object> first = (Map<String, Object>) response.getBody().get(0);
         // Per the documented rule (docs/casos-de-uso/sistema-ecommerce.md)
         // weights are additive per matching field: name = 3, description = 1,
-        // tag = 1. The K87 matches name ("keyboard") AND tag ("keyboard"), so
+        // tag = 1. The K87 matches name ("teclado") AND tag ("teclado"), so
         // the top hit legitimately scores 4.0 — not 3.0.
-        assertThat(first.get("name").toString()).containsIgnoringCase("keyboard");
+        assertThat(first.get("name").toString()).containsIgnoringCase("teclado");
         assertThat(((Number) first.get("score")).doubleValue()).isEqualTo(4.0);
     }
 
@@ -45,13 +45,13 @@ class SearchServiceApplicationTests {
     @SuppressWarnings("unchecked")
     void categoryFilterRestrictsResults() {
         ResponseEntity<List> response = rest.getForEntity(
-                "/api/search?q=noise&category=Audio", List.class);
+                "/api/search?q=ruido&category=Audio", List.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        // "noise" only matches the headset in Audio (description "active noise
-        // cancelling" + tag "noise-cancelling"), so the filter must return
-        // exactly that hit and nothing from other categories. (The previous
-        // query "hd" matched nothing in Audio — the headset has no "hd"
-        // substring — so the result was legitimately empty.)
+        // "ruido" only matches the headset in Audio (description "cancelación
+        // activa de ruido" + tag "cancelación de ruido"), so the filter must
+        // return exactly that hit and nothing from other categories. (The
+        // previous query "hd" matched nothing in Audio — the headset has no
+        // "hd" substring — so the result was legitimately empty.)
         assertThat(response.getBody()).isNotEmpty();
         for (Object hit : response.getBody()) {
             Map<String, Object> item = (Map<String, Object>) hit;
@@ -69,12 +69,12 @@ class SearchServiceApplicationTests {
     @Test
     @SuppressWarnings("unchecked")
     void hotSearchesReflectQueryVolume() {
-        rest.getForEntity("/api/search?q=stand", List.class);
-        rest.getForEntity("/api/search?q=stand", List.class);
+        rest.getForEntity("/api/search?q=soporte", List.class);
+        rest.getForEntity("/api/search?q=soporte", List.class);
         rest.getForEntity("/api/search?q=monitor", List.class);
 
         ResponseEntity<List> response = rest.getForEntity("/api/search/hot", List.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().get(0)).isEqualTo("stand"); // most frequent
+        assertThat(response.getBody().get(0)).isEqualTo("soporte"); // most frequent
     }
 }

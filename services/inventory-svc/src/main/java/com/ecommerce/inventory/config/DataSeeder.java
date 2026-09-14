@@ -26,13 +26,13 @@ public class DataSeeder {
                 return;
             }
             List<InventoryItem> seeds = List.of(
-                    new InventoryItem(1L, "SKU-MX10", "Wireless Mouse MX-10", 120),
-                    new InventoryItem(2L, "SKU-K87", "Mechanical Keyboard K87", 45),
-                    new InventoryItem(3L, "SKU-M27", "27\" IPS Monitor", 18),
-                    new InventoryItem(4L, "SKU-DOCK", "USB-C Docking Station", 30),
-                    new InventoryItem(5L, "SKU-STND", "Laptop Stand Pro", 60),
-                    new InventoryItem(6L, "SKU-WEB", "Webcam HD 1080p", 75),
-                    new InventoryItem(7L, "SKU-HS", "Bluetooth Headset NC", 40),
+                    new InventoryItem(1L, "SKU-MX10", "Mouse Inalámbrico MX-10", 120),
+                    new InventoryItem(2L, "SKU-K87", "Teclado Mecánico K87", 45),
+                    new InventoryItem(3L, "SKU-M27", "Monitor IPS 27\"", 18),
+                    new InventoryItem(4L, "SKU-DOCK", "Estación de Acoplamiento USB-C", 30),
+                    new InventoryItem(5L, "SKU-STND", "Soporte para Laptop Pro", 60),
+                    new InventoryItem(6L, "SKU-WEB", "Cámara Web HD 1080p", 75),
+                    new InventoryItem(7L, "SKU-HS", "Auriculares Bluetooth NC", 40),
                     new InventoryItem(8L, "SKU-SW2", "Smartwatch S2", 25)
             );
             repository.saveAll(seeds);

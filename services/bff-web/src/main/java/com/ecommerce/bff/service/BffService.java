@@ -92,9 +92,9 @@ public class BffService {
                 .map(p -> new ProductSummary(p.id(), p.name(), p.description(),
                         p.price(), p.category()))
                 .toList();
-        // Hero rule: first "Displays" product, else the first product.
+        // Hero rule: first "Pantallas" product, else the first product.
         ProductSummary hero = grid.stream()
-                .filter(p -> "Displays".equalsIgnoreCase(p.category()))
+                .filter(p -> "Pantallas".equalsIgnoreCase(p.category()))
                 .findFirst()
                 .orElse(grid.isEmpty() ? null : grid.get(0));
         return new HomeResponse(grid, hero, false);
