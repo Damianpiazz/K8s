@@ -10,11 +10,11 @@ import type { AnalyticsEvent, CustomerRow, InventoryItem, Notification, Order, P
 
 // ── visual helpers ─────────────────────────────────────────────────────────────
 const VISUAL_BY_CATEGORY: Record<string, VisualColor> = {
-  Peripherals: 'keyboard',
+  Periféricos: 'keyboard',
   Audio: 'headphones',
-  Displays: 'monitor',
-  Accessories: 'hub',
-  'Desk setup': 'lamp',
+  Pantallas: 'monitor',
+  Accesorios: 'hub',
+  Escritorio: 'lamp',
 }
 
 function visualKeyFor(product: { category: string; color?: VisualColor }): VisualColor {
@@ -216,9 +216,9 @@ function OpsDashboard({ flash }: { flash: (message: string) => void }) {
   const customers: CustomerRow[] = useMemo(() => {
     if (isMockMode()) {
       return [
-        { customerId: 'cust-alex', name: 'Alex Morgan', orderCount: 3, lifetimeTotal: 1284 },
-        { customerId: 'cust-jordan', name: 'Jordan Lee', orderCount: 2, lifetimeTotal: 458 },
-        { customerId: 'cust-sam', name: 'Sam Rivera', orderCount: 1, lifetimeTotal: 149 },
+        { customerId: 'cust-alex', name: 'María González', orderCount: 3, lifetimeTotal: 1284 },
+        { customerId: 'cust-jordan', name: 'Juan Pérez', orderCount: 2, lifetimeTotal: 458 },
+        { customerId: 'cust-sam', name: 'Sofía Ramírez', orderCount: 1, lifetimeTotal: 149 },
       ]
     }
     const byCustomer = new Map<string, CustomerRow>()
@@ -254,7 +254,7 @@ function OpsDashboard({ flash }: { flash: (message: string) => void }) {
     try {
       const created = await createProduct({
         name: newProduct.name,
-        category: 'Accessories',
+        category: 'Accesorios',
         price: Number(newProduct.price) || 0,
         stock: Number(newProduct.stock) || 0,
         description: 'Nuevo producto del catálogo',
