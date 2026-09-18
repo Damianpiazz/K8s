@@ -1,5 +1,7 @@
 package com.ecommerce.cart.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,7 +57,15 @@ public class Cart {
         }
     }
 
-    /** Monetary total of all lines. */
+    /**
+     * Monetary total of all lines.
+     *
+     * <p>Annotated because Jackson only auto-detects accessors named
+     * {@code getX}/{@code isX}; without this, {@code total()} is omitted from the
+     * serialized JSON and checkout-svc's {@code CartResponse.total} falls back to
+     * zero.
+     */
+    @JsonProperty("total")
     public BigDecimal total() {
         synchronized (items) {
             return items.stream()
