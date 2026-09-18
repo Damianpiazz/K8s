@@ -52,6 +52,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Event-driven integration: the CheckoutEventPublisher bean is gated by
+             @ConditionalOnProperty(checkout.events.kafka.enabled=true), so tests
+             and local runs pass without any Kafka broker. In production this
+             connects to Azure Event Hubs (SASL_SSL) via the KAFKA_BOOTSTRAP env
+             from ecommerce-env-config. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
