@@ -9,6 +9,9 @@ crash.log
 tfplan
 .terraform.lock.hcl
 
+# ─── Floci emulador local (volumen persistido: estado, cert TLS) ───
+infra/floci/data/
+
 # ─── Kubernetes local config ───
 kubeconfig
 kubeconfig.*

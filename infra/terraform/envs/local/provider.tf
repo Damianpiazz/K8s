@@ -16,6 +16,11 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
+      # Alineado al pin del repo (~>4.0 en versions.tf). Los modulos de
+      # infra/terraform/modules tuvieron drift de sintaxis (args v2/v3:
+      # enable_auto_scaling, node_count_min/max, identity.managed,
+      # enable_non_ssl_port) - corregidos a los nombres v4 durante la puesta
+      # en marcha local contra Floci.
       version = "~> 4.0"
     }
   }

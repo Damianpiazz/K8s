@@ -187,7 +187,7 @@ Resumen de navegación y decisiones clave:
 - **Trust TLS**: `Import-Certificate "$env:TEMP\floci-az.crt" -CertStoreLocation 'Cert:\CurrentUser\Root'` y abrir terminal nueva.
 
 ### Fase 1 — Levantar Floci-AZ
-- **Compose local (a crear): `docs/floci/docker-compose.yml`** — imagen `floci/floci-az:latest`,
+- **Compose local (a crear): `infra/floci/docker-compose.yml`** — imagen `floci/floci-az:latest`,
   puertos `4577` y `4578`, TLS habilitado, storage `hybrid` con `./data:/app/data`, rango
   `6443–6450` publicado, socket de Docker montado, `FLOCI_AZ_SERVICES_EVENT_HUB_ENABLED=true`
   para los topics.
@@ -237,7 +237,7 @@ Resumen de navegación y decisiones clave:
 ### Fase 6 — Opcionales de paridad y limpieza
 - Opcionales: `az` CLI smoke tests, paridad de config server.
 - **Limpieza**: `docker compose down` (sin `-v`), `/_admin/reset` → `204` entre demos, y
-  borrar `docs/floci/data/`.
+  borrar `infra/floci/data/`.
 
 ---
 
@@ -338,7 +338,7 @@ Resumen por destino:
 | R2 | `:latest` en imágenes | Tag UID por build + Kyverno `disallow-latest-tag` (Enforce) | A·B |
 | R3 | k3s no resuelve `localhost:5000` | Mirror insecure de registries en k3s (desvío 6) | A |
 | R4 | ESO no opera contra el Key Vault emulado | Evaluación temprana (Fase 4.4.1) + fallback de secretos documentado | A |
-| R5 | Estado residual del emulador entre demos | `/_admin/reset`, `docker compose down` sin `-v`, borrar `docs/floci/data/` | A |
+| R5 | Estado residual del emulador entre demos | `/_admin/reset`, `docker compose down` sin `-v`, borrar `infra/floci/data/` | A |
 | R6 | JSON de ARM estricto (validación de fechas/IDs) | Fijar `api_version` y shape de body en los desvíos ARM | A |
 | R7 | Typos en `*.tfvars` (passwords rechazados, suffix duplicado) | Checklist de `terraform.tfvars` + `dns_prefix` único con suffix | B |
 | R8 | Backend no encontrado en `terraform init` | Crear storage account + container ANTES del init | B |
