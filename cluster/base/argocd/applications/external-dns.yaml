@@ -22,7 +22,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/<org>/<repo>.git # REPLACE with your repository
+    repoURL: https://github.com/Damianpiazz/K8s.git
     targetRevision: main
     path: cluster/base/external-dns
   destination:
