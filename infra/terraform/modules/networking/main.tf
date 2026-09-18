@@ -50,6 +50,14 @@ resource "azurerm_resource_group" "this" {
   name     = local.resource_group
   location = var.location
   tags     = var.tags
+
+  # Floci-AZ (emulador local) no persiste los tags del RG tras un restart y
+  # responde 405 al PATCH de update -> ignorar drift de tags evita fallos de
+  # apply. En Azure real el RG sigue creandose con tags; solo no se corrigen
+  # si alguien los cambia a mano (cosmetico).
+  lifecycle {
+    ignore_changes = [tags]
+  }
 }
 
 resource "azurerm_virtual_network" "this" {

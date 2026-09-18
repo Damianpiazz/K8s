@@ -296,7 +296,7 @@ R8 (puertos ocupados).
 AKS/ACR/Postgres/Redis/Event Hubs listos para arrancar sidecars, y red docker
 preparada.
 
-### 1.1 Compose local (`docs/floci/docker-compose.yml`)
+### 1.1 Compose local (`infra/floci/docker-compose.yml`)
 
 Crear este archivo (contenido propuesto, basado en `docker-compose.yml` del
 repo clonado + ajustes de este plan):
@@ -364,7 +364,7 @@ Decisiones del compose (con fuente):
 ### 1.2 Arrancar y verificar
 
 ```powershell
-cd docs/floci
+cd infra/floci
 docker compose up -d
 
 # Esperar health (el binario nativo arranca en ms; primer pull de imagen puede tardar)
@@ -943,7 +943,7 @@ kubectl -n ecommerce run nginx-latest --image=nginx:latest --restart=Never
 2. **Nunca commitear** (agregar al `.gitignore` del repo):
    - `infra/terraform/envs/local/*.tfvars` (contiene passwords).
    - `.kube/floci-ecommerce.yaml` (kubeconfig con credenciales del k3s local).
-   - `docs/floci/data/` (volumen persistido del emulador: estado, cert TLS,
+   - `infra/floci/data/` (volumen persistido del emulador: estado, cert TLS,
      firma Entra — `FLOCI_AZ_STORAGE_PERSISTENT_PATH=/app/data`).
    - El PEM descargado del emulador (`floci-az.crt`).
    - `plan.tfplan` (puede contener valores de outputs).
@@ -955,7 +955,7 @@ kubectl -n ecommerce run nginx-latest --image=nginx:latest --restart=Never
    (`ports: "127.0.0.1:4577:4577"`, igual con 6443/5000/6379/9093/5672/5432) si
    la máquina está en una LAN compartida.
 5. **Limpieza de credenciales al terminar** (ver R10):
-   `docker compose down` + borrar `docs/floci/data/` + `/_admin/reset`.
+   `docker compose down` + borrar `infra/floci/data/` + `/_admin/reset`.
 
 ---
 
@@ -972,7 +972,7 @@ kubectl -n ecommerce run nginx-latest --image=nginx:latest --restart=Never
 | <a id="r7"></a>R7 | Timeouts/lentitud de `terraform apply` (creación de k3s, pulls de imágenes sidecar) | Abortos o plan interrumpido | `DeadlineExceeded` | `TF_LOG=info` para ver poll; el provider azurerm puea largos; agregar `retry` en vars |
 | <a id="r8"></a>R8 | Conflictos de puertos (4577, 6443, 5000, 6379, 9093, 5672, 5432) | Sidecars no bootean | Logs de sidecar con `bind: address already in use` | `netstat -ano` / `Get-NetTCPConnection`; liberar o cambiar `FLOCI_AZ_SERVICES_POSTGRES_DEFAULT_PORT`; bindear loopback en compose |
 | <a id="r9"></a>R9 | Primer pull de imágenes pesadas (`rancher/k3s`, `postgres:17-alpine`, `valkey`, `registry:2`, `redpanda`) | Fase 1/2 parecen colgadas | `docker pull` lento en logs | Pre-pullear los sidecars en Fase 1 (`docker pull rancher/k3s:...`); esperar con paciencia; cachear en el daemon |
-| <a id="r10"></a>R10 | Estado residual del emulador (storage persistido, sidecars huérfanos) | Pruebas contaminadas entre runs | Recursos que «ya existían» | `/_admin/reset` entre demos; `docker compose down` (sin `-v`) y borrar `docs/floci/data/` para limpieza total |
+| <a id="r10"></a>R10 | Estado residual del emulador (storage persistido, sidecars huérfanos) | Pruebas contaminadas entre runs | Recursos que «ya existían» | `/_admin/reset` entre demos; `docker compose down` (sin `-v`) y borrar `infra/floci/data/` para limpieza total |
 
 ---
 
@@ -998,7 +998,7 @@ Checklist de cierre del entorno emulado (todas las fases previas cumplidas):
 - [ ] Fase 5: checkout e2e completo (orden → pago → evento Kafka → log del
       consumer `notification-svc`); frontend vía `www.127.0.0.1.nip.io`;
       prueba negativa de Kyverno pasa (rechaza `nginx:latest`).
-- [ ] Limpieza: `docker compose down` + `docs/floci/data/` borrado (o estado
+- [ ] Limpieza: `docker compose down` + `infra/floci/data/` borrado (o estado
       documentado como conservado para la próxima sesión).
 
 ---

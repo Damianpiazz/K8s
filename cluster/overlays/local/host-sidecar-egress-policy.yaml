@@ -1,0 +1,42 @@
+---
+# Local-only egress allowance: data sidecars del emulador (fix 18).
+#
+# Las NetworkPolicies base de los services abren 443/5432 a 0.0.0.0/0 pensando
+# en Azure (Postgres 5432). El sidecar Postgres del emulador usa un PUERTO
+# DINAMICO (p.ej. 37865; ver `docker port floci-az-pg-psql-*`) y el Kafka local
+# escucha en 9093, así que el default-deny egress bloquea las conexiones al host.
+#
+# Esta policy ES ADITIVA (las NetworkPolicies del namespace se unen): solo
+# agrega egress hacia la pasarela del bridge Docker (172.22.0.1 = el HOST,
+# CoreDNS fix 17) para los puertos de datos. No modifica las policies base.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-host-sidecars
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+    env: local
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - catalog-svc
+          - order-svc
+          - payment-svc
+          - inventory-svc
+          - notification-svc
+          - checkout-svc
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 172.22.0.1/32
+      ports:
+        - port: 37865
+          protocol: TCP
+        - port: 9093
+          protocol: TCP

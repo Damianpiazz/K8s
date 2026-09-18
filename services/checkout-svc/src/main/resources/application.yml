@@ -11,11 +11,33 @@ spring:
     # a phase adds one). When absent the app boots with local defaults below.
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
+  kafka:
+    # Azure Event Hubs Kafka endpoint in prod — the KAFKA_BOOTSTRAP env comes
+    # from ecommerce-env-config (SASL_SSL, *.servicebus.windows.net:9093).
+    # Only used when checkout.events.kafka.enabled=true (producer bean active).
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    properties:
+      # Prod overlay sets KAFKA_SECURITY_PROTOCOL=SASL_SSL; local emulator
+      # defaults to PLAINTEXT — harmless in both.
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    producer:
+      properties:
+        # Bound the max time a single publish may stall checkout when the
+        # broker is down (requirement b: checkout never blocks on Kafka);
+        # downstream events are best-effort and async.
+        max.block.ms: 1500
+
 checkout:
   # Overridden in k8s via CHECKOUT_CART_BASE_URL (cart-svc ClusterIP DNS).
   cart:
     base-url: ${CHECKOUT_CART_BASE_URL:http://localhost:8082}
     timeout-ms: 2000
+  events:
+    # Event-driven producer switch (default OFF so tests/CI need no broker).
+    # Set CHECKOUT_EVENTS_KAFKA_ENABLED=true in the environment to activate
+    # the Kafka/Event Hubs producer (see CheckoutEventPublisher).
+    kafka:
+      enabled: false
 
 eureka:
   instance:

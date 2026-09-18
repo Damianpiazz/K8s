@@ -39,7 +39,7 @@ acr_admin_enabled                 = true
 acr_public_network_access_enabled = true
 
 # --- Databases: PostgreSQL ---------------------------------------------------
-postgres_sku                           = "B_Standard_B1s"
+postgres_sku                           = "B_Standard_B1ms" # SKU valido azurerm 4.x (antes B_Standard_B1s)
 postgres_version                       = "16"
 postgres_storage_mb                    = 32768
 postgres_public_network_access_enabled = true
