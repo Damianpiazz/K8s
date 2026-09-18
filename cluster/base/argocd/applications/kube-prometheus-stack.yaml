@@ -30,7 +30,7 @@ spec:
         releaseName: kube-prometheus-stack
         valueFiles:
           - $values/cluster/base/monitoring/kube-prometheus-stack/values.yaml
-    - repoURL: https://github.com/<org>/<repo>.git # REPLACE with your repository
+    - repoURL: https://github.com/Damianpiazz/K8s.git
       targetRevision: main
       ref: values
   destination:
@@ -42,3 +42,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
