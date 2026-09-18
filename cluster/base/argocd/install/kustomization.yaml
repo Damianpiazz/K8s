@@ -4,30 +4,34 @@
 # This kustomization is NOT referenced by cluster/base/kustomization.yaml.
 # Run it ONCE on a fresh cluster, BEFORE applying the app-of-apps:
 #
-#   kubectl apply -k cluster/base/argocd/install
+#   kubectl apply -k cluster/base/argocd/install -n argocd
 #
-# It pulls the official Argo CD manifests (namespace, CRDs, controllers)
-# from a remote kustomize base.
+# It vendors the official Argo CD v2.12.3 manifests (CRDs, controllers,
+# RBAC, services) as a local install.yaml — no remote kustomize base, so the
+# bootstrap is kustomize-v5-safe and pinned to an exact upstream release.
 #
-# NOTE: remote kustomize bases are deprecated in kustomize v5 — if your
-# kubectl/kustomize rejects the remote ref, fall back to the official
-# installer (same content, no kustomize needed):
-#
-#   kubectl apply -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.3/manifests/install.yaml
+# NOTE: the upstream install.yaml does NOT set metadata.namespace on
+# namespaced objects — Argo CD expects the installer to inject it. Always
+# pass -n argocd (or set the context namespace) or Argo CD lands in the
+# context namespace (usually "default").
 #
 # After Argo CD is healthy, bootstrap the applications:
 #
-#   kubectl apply -k cluster/base   # see README.md for the full order
+#   kubectl apply -f cluster/base/argocd/app-of-apps.yaml
+#   kubectl apply -f cluster/base/argocd/applications/
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # Official Argo CD manifests (cluster-install variant, no HA — fine for dev).
-  - https://github.com/argoproj/argo-cd.git/manifests/cluster-install?ref=v2.12.3
+  # Official Argo CD v2.12.3 manifests, vendored locally.
+  # Source: https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.3/manifests/install.yaml
+  # SHA-256: A4A746D7125A537819C0919D33457A0470372FB9AE8E5CCE63B8B95B4464EDB6
+  - install.yaml
 
 patches:
-  # Optional: expose Argo CD server on its own NodePort/LoadBalancer via
-  # service type override. Comment out if you manage access via port-forward:
-  #   kubectl port-forward -n argocd svc/argocd-server 8080:443
+  # Expose the Argo CD server over plain HTTP so the UI is reachable at
+  # http://localhost:8080 (port-forward) or http://<node-ip>:443
+  # (LoadBalancer) without browser certificate warnings.
+  # Comment this patch out if you prefer the default TLS (self-signed).
   - target:
       group: apps
       version: v1
