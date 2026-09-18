@@ -1,10 +1,10 @@
----
-# Kustomize overlay — LOCAL (emulador Floci-AZ).
+﻿---
+# Kustomize overlay â€” LOCAL (emulador Floci-AZ).
 #
 # Espejo del overlay DEV con estas diferencias (plan-implementacion 4.1):
 #   - `resources: - ../../base` (el mismo base que dev) PERO con delete
 #     patches que sacan: las Argo CD Applications (app-of-apps + plataforma +
-#     ambiente — el bootstrap local aplica componentes directo), external-dns
+#     ambiente â€” el bootstrap local aplica componentes directo), external-dns
 #     (apunta a DNS de Azure; descartado en local) y el example-external-secret
 #     (en local el ClusterSecretStore apunta al Key Vault emulado por floci).
 #   - ClusterIssuer letsencrypt-default -> selfsigned (sin internet)
@@ -18,26 +18,36 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # ── Base completo (igual que dev) ──────────────────────────────────────
+  # â”€â”€ Base completo (igual que dev) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   - ../../base
-  # ── Overlay local ───────────────────────────────────────────────────────
-  - issuer-default.yaml
+  # â”€â”€ Overlay local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # issuer-default.yaml NO se referencia: cert-manager no se instala en local
+  # y patches/cert-manager-delete.yaml barre TODOS los ClusterIssuer del
+  # build (kind-wide). El archivo queda como documentaciÃ³n de la intenciÃ³n.
   - env-config.yaml
+  - auth-realm-configmap.yaml
+  - host-sidecar-egress-policy.yaml
 
-  # ── Services (Phase 5 — core; cada servicio usa sus manifests BASE) ────
+  # Exclusión de HPA (fix 13 durable): en nodo único el autoscaler satura el
+  # k3s; la limpieza runtime no sobrevive al proximo apply. Los deletes son
+  # POR NOMBRE (kustomize v5 no soporta kind-wide) y van INLINE en patches:
+  # un archivo kind: Kustomization/Component en resources:/components: exige
+  # un directorio, no un archivo (error "must build at directory").
+
+  # â”€â”€ Services (Phase 5 â€” core; cada servicio usa sus manifests BASE) â”€â”€â”€â”€
   - ../../../services/config-service/k8s/base
   - ../../../services/discovery-service/k8s/base
   - ../../../services/api-gateway/k8s/base
   - ../../../services/auth/k8s/base
   - ../../../services/catalog-svc/k8s/base
   - ../../../services/cart-svc/k8s/base
-  # ── Services (Phase 6 — business) ───────────────────────────────────────
+  # â”€â”€ Services (Phase 6 â€” business) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   - ../../../services/checkout-svc/k8s/base
   - ../../../services/order-svc/k8s/base
   - ../../../services/payment-svc/k8s/base
   - ../../../services/notification-svc/k8s/base
   - ../../../services/bff-web/k8s/base
-  # ── Services (Phase 7 — extra) ──────────────────────────────────────────
+  # â”€â”€ Services (Phase 7 â€” extra) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   - ../../../services/search-svc/k8s/base
   - ../../../services/recommendation-svc/k8s/base
   - ../../../services/inventory-svc/k8s/base
@@ -45,18 +55,182 @@ resources:
   - ../../../services/returns-svc/k8s/base
   - ../../../services/analytics-svc/k8s/base
   - ../../../services/frontend/k8s/base
-  # ── Observability / Security app layers ─────────────────────────────────
+  # â”€â”€ Observability / Security app layers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   - ../../../observability
   - ../../../security
 
 patches:
-  # Patch del ClusterSecretStore azure-keyvault -> Key Vault emulado por floci
+  # â”€â”€ Keycloak local: realm montado sobre el de la imagen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # La imagen embebe services/auth/src/realm-export.json con redirectUris
+  # que usan el placeholder api.<domain> (URI invÃ¡lida -> Keycloak aborta la
+  # importaciÃ³n). En local se monta auth-realm-configmap.yaml encima del
+  # path de import para hosts *.localhost. AdemÃ¡s start-dev NO expone
+  # /health/* sin --health-enabled=true; los probes del Deployment asumen
+  # que existen, asÃ­ que se activa (igual que en prod) para escapar del
+  # kill-loop por liveness 404.
   - target:
-      kind: ClusterSecretStore
-      name: azure-keyvault
-    path: patches/secret-store-patch.yaml
+      kind: Deployment
+      name: auth
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: auth
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: auth-realm
+                configMap:
+                  name: auth-realm-local
+            containers:
+              - name: auth
+                volumeMounts:
+                  - name: auth-realm
+                    mountPath: /opt/keycloak/data/import/realm-export.json
+                    subPath: realm-export.json
+                command: ["/opt/keycloak/bin/kc.sh"]
+                args: ["start-dev", "--import-realm", "--health-enabled=true"]
 
-  # ── Excluidos del base (local) ──────────────────────────────────────────
+  # â”€â”€ Data plane local: services con datasource -> Postgres sidecar â”€â”€â”€â”€â”€â”€
+  # Los configmaps base de estos servicios dejan H2 in-memory (demo), pero
+  # los env del CONTAINER tienen precedencia sobre envFrom (misma clave), asÃ­
+  # que se apunta explicito al sidecar Postgres del emulador (fix 18). El
+  # puerto es dinamico en el host (ver `docker port`); ddl-auto=update crea
+  # el schema sobre la DB `ecommerce` del sidecar y ENABLE_MOCK_DATA=true
+  # re-siembra los datos demo.
+  - target:
+      kind: Deployment
+      name: catalog-svc
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: catalog-svc
+      spec:
+        template:
+          spec:
+            containers:
+              - name: catalog-svc
+                env:
+                  - name: SPRING_DATASOURCE_URL
+                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
+                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+                    value: org.postgresql.Driver
+                  - name: SPRING_DATASOURCE_USERNAME
+                    value: psqladmin
+                  - name: SPRING_DATASOURCE_PASSWORD
+                    value: <fuerte-sin-@>
+                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+                    value: update
+  - target:
+      kind: Deployment
+      name: order-svc
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: order-svc
+      spec:
+        template:
+          spec:
+            containers:
+              - name: order-svc
+                env:
+                  - name: SPRING_DATASOURCE_URL
+                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
+                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+                    value: org.postgresql.Driver
+                  - name: SPRING_DATASOURCE_USERNAME
+                    value: psqladmin
+                  - name: SPRING_DATASOURCE_PASSWORD
+                    value: <fuerte-sin-@>
+                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+                    value: update
+  - target:
+      kind: Deployment
+      name: payment-svc
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: payment-svc
+      spec:
+        template:
+          spec:
+            containers:
+              - name: payment-svc
+                env:
+                  - name: SPRING_DATASOURCE_URL
+                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
+                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+                    value: org.postgresql.Driver
+                  - name: SPRING_DATASOURCE_USERNAME
+                    value: psqladmin
+                  - name: SPRING_DATASOURCE_PASSWORD
+                    value: <fuerte-sin-@>
+                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+                    value: update
+  - target:
+      kind: Deployment
+      name: inventory-svc
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: inventory-svc
+      spec:
+        template:
+          spec:
+            containers:
+              - name: inventory-svc
+                env:
+                  - name: SPRING_DATASOURCE_URL
+                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
+                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+                    value: org.postgresql.Driver
+                  - name: SPRING_DATASOURCE_USERNAME
+                    value: psqladmin
+                  - name: SPRING_DATASOURCE_PASSWORD
+                    value: <fuerte-sin-@>
+                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+                    value: update
+
+  # â”€â”€ Ingresos local: hosts *.localhost â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # El base deja el placeholder api.<domain> (lo resuelve el CD en Azure);
+  # en local los hosts son subdominios de .localhost (RFC 1123, sin DNS).
+  - target:
+      kind: Ingress
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.localhost
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.localhost
+  - target:
+      kind: Ingress
+      name: auth
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: auth.localhost
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: auth.localhost
+  - target:
+      kind: Ingress
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: www.localhost
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: www.localhost
+
+  # â”€â”€ Excluidos del base (local) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   # Argo CD Applications: en local el bootstrap aplica componentes directo.
   - target:
       kind: Application
@@ -180,7 +354,7 @@ patches:
         name: ecommerce-prod
       $patch: delete
 
-  # external-dns (DNS de Azure — no aplica en local)
+  # external-dns (DNS de Azure â€” no aplica en local)
   - target:
       kind: ServiceAccount
       name: external-dns
@@ -240,66 +414,657 @@ patches:
         name: ecommerce-db-credentials
       $patch: delete
 
-# Pod Security (PSA) labels — igual que dev.
+# â”€â”€ Operators ausentes en local: exclusiÃ³n kind-wide (kustomize v5) â”€â”€â”€â”€â”€
+# Estos recursos pertenecen a CRDs de operators (cert-manager, kyverno,
+# external-secrets, kube-prometheus-stack, KEDA) que el app-of-apps de Argo
+# instala en Azure pero NO en el bootstrap local. Sin las CRDs el apply
+# falla ("no matches for kind"), asÃ­ que se barren del build completo.
+# R4 (ESO <-> Key Vault emulado) queda PENDIENTE: local usa Secrets planos.
+# NOTA: los deletes kind-wide (SM sin nombre) FALLAN en kustomize v5
+# ("no matches for Id"/"trouble configuring PatchTransformer"), por eso la
+# exclusiÃ³n es POR NOMBRE, consistente con el resto del overlay.
+
+  # â”€â”€ ExclusiÃ³n por nombre: cert-manager (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  - target:
+      kind: ClusterIssuer
+      group: cert-manager.io
+      version: v1
+      name: selfsigned
+    patch: |-
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: selfsigned
+      $patch: delete
+  - target:
+      kind: ClusterIssuer
+      group: cert-manager.io
+      version: v1
+      name: letsencrypt-staging
+    patch: |-
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: letsencrypt-staging
+      $patch: delete
+  - target:
+      kind: ClusterIssuer
+      group: cert-manager.io
+      version: v1
+      name: letsencrypt-prod
+    patch: |-
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: letsencrypt-prod
+      $patch: delete
+
+  # â”€â”€ ExclusiÃ³n por nombre: kyverno (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  - target:
+      kind: ClusterPolicy
+      group: kyverno.io
+      version: v1
+      name: disallow-latest-tag
+    patch: |-
+      apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      metadata:
+        name: disallow-latest-tag
+      $patch: delete
+  - target:
+      kind: ClusterPolicy
+      group: kyverno.io
+      version: v1
+      name: disallow-plain-secrets
+    patch: |-
+      apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      metadata:
+        name: disallow-plain-secrets
+      $patch: delete
+  - target:
+      kind: ClusterPolicy
+      group: kyverno.io
+      version: v1
+      name: require-labels
+    patch: |-
+      apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      metadata:
+        name: require-labels
+      $patch: delete
+  - target:
+      kind: ClusterPolicy
+      group: kyverno.io
+      version: v1
+      name: require-resources
+    patch: |-
+      apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      metadata:
+        name: require-resources
+      $patch: delete
+
+  # â”€â”€ ExclusiÃ³n por nombre: external-secrets (CRDs ausentes en local) â”€â”€â”€â”€â”€
+  - target:
+      kind: ClusterSecretStore
+      group: external-secrets.io
+      version: v1beta1
+      name: azure-keyvault
+    patch: |-
+      apiVersion: external-secrets.io/v1beta1
+      kind: ClusterSecretStore
+      metadata:
+        name: azure-keyvault
+      $patch: delete
+  - target:
+      kind: ExternalSecret
+      group: external-secrets.io
+      version: v1beta1
+      name: keycloak-admin-credentials
+    patch: |-
+      apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
+      metadata:
+        name: keycloak-admin-credentials
+      $patch: delete
+
+  # â”€â”€ ExclusiÃ³n por nombre: monitoring (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  - target:
+      kind: PrometheusRule
+      group: monitoring.coreos.com
+      version: v1
+      name: jvm-memory-pressure
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: jvm-memory-pressure
+      $patch: delete
+  - target:
+      kind: PrometheusRule
+      group: monitoring.coreos.com
+      version: v1
+      name: order-svc-slo
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: order-svc-slo
+      $patch: delete
+  - target:
+      kind: PrometheusRule
+      group: monitoring.coreos.com
+      version: v1
+      name: service-down
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: service-down
+      $patch: delete
+  - target:
+      kind: PrometheusRule
+      group: monitoring.coreos.com
+      version: v1
+      name: service-high-latency
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: service-high-latency
+      $patch: delete
+  - target:
+      kind: PrometheusRule
+      group: monitoring.coreos.com
+      version: v1
+      name: service-high-error-rate
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        name: service-high-error-rate
+      $patch: delete
+
+  # â”€â”€ ExclusiÃ³n por nombre: KEDA (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  - target:
+      kind: ScaledObject
+      group: keda.sh
+      version: v1alpha1
+      name: order-worker
+    patch: |-
+      apiVersion: keda.sh/v1alpha1
+      kind: ScaledObject
+      metadata:
+        name: order-worker
+      $patch: delete
+
+  # â”€â”€ ExclusiÃ³n por nombre: ServiceMonitors (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: analytics-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: analytics-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: api-gateway
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: api-gateway
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: auth
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: auth
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: bff-web
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: bff-web
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: cart-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: cart-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: catalog-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: catalog-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: checkout-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: checkout-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: config-service
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: config-service
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: discovery-service
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: discovery-service
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: inventory-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: inventory-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: notification-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: notification-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: order-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: order-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: otel-collector
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: otel-collector
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: payment-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: payment-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: recommendation-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: recommendation-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: returns-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: returns-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: search-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: search-svc
+      $patch: delete
+  - target:
+      kind: ServiceMonitor
+      group: monitoring.coreos.com
+      version: v1
+      name: shipping-svc
+    patch: |-
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: shipping-svc
+      $patch: delete
+
+  # Exclusión de HPA (fix 13 durable) — 18 servicios. Deletes POR NOMBRE
+  # (kustomize v5 no soporta kind-wide); contenido de hpa-delete.yaml inline.
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: analytics-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: analytics-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: api-gateway
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: api-gateway
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: auth
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: auth
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: bff-web
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: bff-web
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: cart-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: cart-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: catalog-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: catalog-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: checkout-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: checkout-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: config-service
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: config-service
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: discovery-service
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: discovery-service
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: frontend
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: frontend
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: inventory-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: inventory-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: notification-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: notification-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: order-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: order-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: payment-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: payment-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: recommendation-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: recommendation-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: returns-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: returns-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: search-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: search-svc
+      $patch: delete
+  - target:
+      kind: HorizontalPodAutoscaler
+      group: autoscaling
+      version: v2
+      name: shipping-svc
+    patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: shipping-svc
+      $patch: delete
+
+# Pod Security (PSA) labels â€” igual que dev.
 components:
   - ../../../security/pod-security
 
-# ── Image tags ─────────────────────────────────────────────────────────────
+# â”€â”€ Image tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Registry local = sidecar ACR de floci. Los contenedores k3s acceden al
 # host via host.docker.internal (plan-implementacion 4.1).
-# El tag por default es <sha> — lo pisa el deploy o el script build-push.
+# El tag por default es <sha> â€” lo pisa el deploy o el script build-push.
 images:
   - name: acr.azurecr.io/config-service
     newName: host.docker.internal:5000/localecommercefloci01/config-service
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/discovery-service
     newName: host.docker.internal:5000/localecommercefloci01/discovery-service
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/api-gateway
     newName: host.docker.internal:5000/localecommercefloci01/api-gateway
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/auth
     newName: host.docker.internal:5000/localecommercefloci01/auth
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/catalog-svc
     newName: host.docker.internal:5000/localecommercefloci01/catalog-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/cart-svc
     newName: host.docker.internal:5000/localecommercefloci01/cart-svc
-    newTag: latest
+    # Tag privado de cart-svc: serialización de Cart.total() (fix 20). El resto
+    # de los servicios siguen en 870f34f; bump necesario por IfNotPresent.
+    newTag: 870f35b
   - name: acr.azurecr.io/checkout-svc
     newName: host.docker.internal:5000/localecommercefloci01/checkout-svc
-    newTag: latest
+    # Tag privado de checkout-svc: productor Kafka (fix 19). El resto de los
+    # servicios siguen en 870f34f; el bump es necesario porque imagePullPolicy
+    # es IfNotPresent y un rebuild con el MISMO tag deja pods viejos.
+    newTag: 870f35a
   - name: acr.azurecr.io/order-svc
     newName: host.docker.internal:5000/localecommercefloci01/order-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/payment-svc
     newName: host.docker.internal:5000/localecommercefloci01/payment-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/notification-svc
     newName: host.docker.internal:5000/localecommercefloci01/notification-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/search-svc
     newName: host.docker.internal:5000/localecommercefloci01/search-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/recommendation-svc
     newName: host.docker.internal:5000/localecommercefloci01/recommendation-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/inventory-svc
     newName: host.docker.internal:5000/localecommercefloci01/inventory-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/shipping-svc
     newName: host.docker.internal:5000/localecommercefloci01/shipping-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/returns-svc
     newName: host.docker.internal:5000/localecommercefloci01/returns-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/analytics-svc
     newName: host.docker.internal:5000/localecommercefloci01/analytics-svc
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/bff-web
     newName: host.docker.internal:5000/localecommercefloci01/bff-web
-    newTag: latest
+    newTag: 870f34f
   - name: acr.azurecr.io/frontend
     newName: host.docker.internal:5000/localecommercefloci01/frontend
-    newTag: latest
+    newTag: 870f34f
