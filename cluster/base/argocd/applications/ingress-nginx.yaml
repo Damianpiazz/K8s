@@ -25,7 +25,7 @@ spec:
         releaseName: ingress-nginx
         valueFiles:
           - $values/cluster/base/ingress-nginx/values.yaml
-    - repoURL: https://github.com/<org>/<repo>.git # REPLACE with your repository
+    - repoURL: https://github.com/Damianpiazz/K8s.git
       targetRevision: main
       ref: values
   destination:
