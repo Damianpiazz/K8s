@@ -1,0 +1,24 @@
+---
+# Local-only CoreDNS override: make `host.docker.internal` resolvable from pods.
+#
+# Los pods k3s usan CoreDNS; a diferencia del NODO k3s (un contenedor Docker
+# con el DNS embebido de Docker), CoreDNS NO resuelve host.docker.internal
+# (NXDOMAIN). Sin esto, los servicios que apuntan a los sidecars del emulador
+# (DB_HOST/REDIS_HOST/KAFKA_BOOTSTRAP) no pueden alcanzarlos (fix 17).
+#
+# El backup del bridge de floci_az_default es la pasarela al HOST (172.22.0.1);
+# el NODO k3s (172.22.0.6) es el camino por defecto NAT de los pods al host.
+#
+# k3s importa /etc/coredns/custom/*.override desde el ConfigMap `coredns-custom`,
+# así que no hay que editar el Corefile gestionado por k3s.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  host.docker.internal.override: |
+    hosts {
+      172.22.0.1 host.docker.internal
+      fallthrough
+    }

@@ -21,14 +21,23 @@ data:
 
   # ── Data connections (sidecars en el host) ─────────────────────────────
   DB_HOST: host.docker.internal
-  DB_PORT: "5432"
+  # NOTA: el sidecar Postgres bindea un PUERTO DINAMICO del host (fix 18).
+  # 5432 chocaba con otros proyectos / no es el sidecar. Ver puerto real:
+  #   docker port floci-az-pg-psql-local-ecommerce-floci01
+  DB_PORT: "37865"
   DB_NAME: ecommerce
   REDIS_HOST: host.docker.internal
   REDIS_PORT: "6379"                    # valkey local sin TLS
 
-  # ── Messaging (Event Hubs emulado / Kafka endpoint del sidecar) ────────
+  # ── Messaging (Kafka endpoint) ─────────────────────────────────────────
+  # En local el emulador NO levanta el sidecar Redpanda (solo Artemis/AMQP);
+  # el endpoint Kafka lo sirve el contenedor floci-az-kafka-sc (fix 16).
   KAFKA_BOOTSTRAP: host.docker.internal:9093
   KAFKA_SECURITY_PROTOCOL: PLAINTEXT    # local sin SASL_SSL
+  # Consumer de eventos de notification-svc (base lo apaga para tests/CI).
+  NOTIFICATIONS_KAFKA_ENABLED: "true"
+  # Productor de eventos de checkout (base lo apaga para tests/CI).
+  CHECKOUT_EVENTS_KAFKA_ENABLED: "true"
 
   # ── Feature flags (local extras) ───────────────────────────────────────
   ENABLE_SWAGGER: "true"

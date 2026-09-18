@@ -151,10 +151,10 @@ resource "azurerm_kubernetes_cluster" "this" {
     vm_size             = var.vm_size
     vnet_subnet_id      = var.aks_subnet_id
     zones               = var.sku_tier == "Standard" ? ["1", "2", "3"] : null
-    enable_auto_scaling = var.autoscaling_enabled
+    auto_scaling_enabled = var.autoscaling_enabled
     node_count          = var.autoscaling_enabled ? null : var.node_count_min
-    node_count_min      = var.autoscaling_enabled ? var.node_count_min : null
-    node_count_max      = var.autoscaling_enabled ? var.node_count_max : null
+    min_count           = var.autoscaling_enabled ? var.node_count_min : null
+    max_count           = var.autoscaling_enabled ? var.node_count_max : null
   }
 
   identity {
@@ -171,9 +171,7 @@ resource "azurerm_kubernetes_cluster" "this" {
 
   role_based_access_control_enabled = true
   azure_active_directory_role_based_access_control {
-    managed                = true
     admin_group_object_ids = var.enable_aad ? var.admin_group_object_ids : []
-    azure_rbac_enabled     = var.enable_aad
   }
 
   tags = {
@@ -189,9 +187,9 @@ resource "azurerm_kubernetes_cluster_node_pool" "services" {
   kubernetes_cluster_id = azurerm_kubernetes_cluster.this.id
   vm_size               = var.services_pool_vm_size
   vnet_subnet_id        = var.aks_subnet_id
-  enable_auto_scaling   = true
-  node_count_min        = var.services_pool_min
-  node_count_max        = var.services_pool_max
+  auto_scaling_enabled  = true
+  min_count             = var.services_pool_min
+  max_count             = var.services_pool_max
   node_labels = {
     role = "services"
   }
