@@ -5,6 +5,7 @@ import com.ecommerce.checkout.model.CheckoutRequest;
 import com.ecommerce.checkout.model.CheckoutResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
@@ -45,10 +46,12 @@ public class CheckoutService {
     private final AtomicLong ids = new AtomicLong(1);
 
     private final RestClient cartClient;
+    private final ObjectProvider<CheckoutEventPublisher> eventPublisher;
 
     public CheckoutService(
             @Value("${checkout.cart.base-url}") String cartBaseUrl,
-            @Value("${checkout.cart.timeout-ms}") long cartTimeoutMs) {
+            @Value("${checkout.cart.timeout-ms}") long cartTimeoutMs,
+            ObjectProvider<CheckoutEventPublisher> eventPublisher) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) cartTimeoutMs);
         factory.setReadTimeout((int) cartTimeoutMs);
@@ -56,6 +59,7 @@ public class CheckoutService {
                 .baseUrl(cartBaseUrl)
                 .requestFactory(factory)
                 .build();
+        this.eventPublisher = eventPublisher;
     }
 
     /** Runs the checkout flow and stores the record. Never throws on cart failure. */
@@ -73,6 +77,11 @@ public class CheckoutService {
         records.put(orderId, record);
         log.info("Checkout {} for customer {} completed — total {}",
                 orderId, request.customerId(), total);
+
+        eventPublisher.ifAvailable(publisher -> {
+            publisher.publishOrder(record);
+            publisher.publishPayment(record);
+        });
 
         return new CheckoutResponse(orderId, total, status);
     }
