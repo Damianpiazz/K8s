@@ -33,4 +33,4 @@ spec:
               {{ $labels.job }} is returning 5xx for more than 5% of its
               requests over the last 5 minutes (current: {{ $value | humanizePercentage }}).
               Check recent deploys, downstream dependencies and database health.
-            runbook: "https://example.com/runbooks/high-error-rate" # TODO: replace with your runbook URL
+            runbook: "https://github.com/Damianpiazz/K8s/blob/main/docs/runbooks/troubleshooting.md" # docs/runbooks/troubleshooting.md

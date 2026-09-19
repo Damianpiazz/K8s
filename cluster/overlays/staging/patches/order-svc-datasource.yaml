@@ -1,0 +1,30 @@
+---
+# Fase 6 — datasource de order-svc → Azure Database for PostgreSQL.
+# Base de datos: orders (postgres_databases del terraform).
+# Ver catalog-svc-datasource.yaml para la convención completa (fix 30).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-svc
+spec:
+  template:
+    spec:
+      containers:
+        - name: order-svc
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/orders
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: org.postgresql.Driver
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update

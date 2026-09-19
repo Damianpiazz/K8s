@@ -20,10 +20,13 @@ data:
   LOG_LEVEL: DEBUG
 
   # ── Data connections (sidecars en el host) ─────────────────────────────
+  # NOTA (fix 30): los 4 services con datasource (catalog/order/inventory/
+  # payment) ya NO consumen DB_HOST/DB_PORT — corren un sidecar postgres:16-
+  # alpine en SU pod (127.0.0.1:5432/DB propia, ver patches/*-postgres-
+  # sidecar.yaml). Estas keys quedan por compatibilidad con consumidores
+  # legacy (el postgres del emulador bindea un puerto DINAMICO del host; no
+  # usar como referencia de los services).
   DB_HOST: host.docker.internal
-  # NOTA: el sidecar Postgres bindea un PUERTO DINAMICO del host (fix 18).
-  # 5432 chocaba con otros proyectos / no es el sidecar. Ver puerto real:
-  #   docker port floci-az-pg-psql-local-ecommerce-floci01
   DB_PORT: "37865"
   DB_NAME: ecommerce
   REDIS_HOST: host.docker.internal

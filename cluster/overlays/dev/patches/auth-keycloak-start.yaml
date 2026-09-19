@@ -1,0 +1,47 @@
+---
+# Fase 6 — Keycloak en modo producción (dev) → kc.sh start + PostgreSQL.
+# El base usa start-dev (H2 embebido) para demo local; Azure exige postura de
+# producción: postgres gestionado (misma DB que los servicios, server compartido
+# psql-dev-ecommerce-<suffix>) + proxy-headers para el ingress TLS terminado en
+# el cluster.
+#   -comando/args: reemplazan los del base (start-dev → start). --import-realm
+#   sigue activo: el realm montado (patches/deployment-auth-realm-patch.yaml)
+#   se importa igual que en start-dev.
+#   -KC_DB_URL usa el FQDN literal del Flexible Server (Keycloak no resuelve
+#   placeholders ${DB_HOST} de Spring; el <suffix> se ajusta en despliegue real,
+#   igual que en env-config).
+#   -KC_DB_USERNAME/PASSWORD: Secret db-credentials (ExternalSecret → KV).
+#   -KC_HOSTNAME: host público del zone dev (coincide con el ingress auth).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  template:
+    spec:
+      containers:
+        - name: auth
+          command:
+            - /opt/keycloak/bin/kc.sh
+          args:
+            - start
+            - --import-realm
+            - --health-enabled=true
+            - --metrics-enabled=true
+            - --proxy-headers=xforwarded
+            - --db=postgres
+          env:
+            - name: KC_HOSTNAME
+              value: https://auth.dev.ecommerce.example.com
+            - name: KC_DB_URL
+              value: jdbc:postgresql://psql-dev-ecommerce-<suffix>.postgres.database.azure.com:5432/keycloak
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password

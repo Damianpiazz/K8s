@@ -1,13 +1,12 @@
 ---
-# ClusterIssuer: letsencrypt-default (LOCAL → selfsigned).
+# ClusterIssuer LOCAL (Phase 4) — mismo nombre que en dev/staging/prod
+# (`letsencrypt-default`) pero de tipo selfSigned: floci no tiene DNS ni acceso
+# a ACME. Los ingresses (auth, argocd, grafana, ...) resuelven la anotación
+# cert-manager.io/cluster-issuer en cualquier overlay; acá los certificados son
+# autofirmados — se prueba https:// + TLS completo sin depender de internet
+# (el navegador mostrará advertencia de cert, esperado en local).
 #
-# En dev el issuer usa el servidor staging ACME de Let's Encrypt. En local NO
-# hay internet confiable desde el cluster, entonces letsencrypt-default es
-# selfsigned — los servicios que referencian la annotation
-#   cert-manager.io/cluster-issuer: letsencrypt-default
-# obtienen certificados firmados por la CA interna de k3s / floci.
-#
-# El base ya trae los issuers: selfsigned, letsencrypt-staging, letsencrypt-prod.
+# TODO(F4): reemplazar por un issuer real (ACME) cuando floci tenga dominio.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:

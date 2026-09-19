@@ -11,7 +11,7 @@
 #     gets full ingress+egress deny instead of cluster-wide default-allow.
 #
 # This is the "safety net" the per-service policies were designed against
-# (plan-ecommerce-k8s.md, section 4.6). Apply it AFTER the services: a
+# (docs/PLAN.md, seguridad de red). Apply it AFTER the services: a
 # namespace-wide default-allow window exists between service rollout and this
 # applying — acceptable in GitOps (single apply of kustomize output).
 apiVersion: networking.k8s.io/v1

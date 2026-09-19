@@ -1,19 +1,29 @@
-﻿---
-# Kustomize overlay â€” LOCAL (emulador Floci-AZ).
+---
+# Kustomize overlay — LOCAL (emulador Floci-AZ).
 #
-# Espejo del overlay DEV con estas diferencias (plan-implementacion 4.1):
-#   - `resources: - ../../base` (el mismo base que dev) PERO con delete
-#     patches que sacan: las Argo CD Applications (app-of-apps + plataforma +
-#     ambiente â€” el bootstrap local aplica componentes directo), external-dns
-#     (apunta a DNS de Azure; descartado en local) y el example-external-secret
-#     (en local el ClusterSecretStore apunta al Key Vault emulado por floci).
-#   - ClusterIssuer letsencrypt-default -> selfsigned (sin internet)
+# Espejo del overlay DEV con estas diferencias (docs/PLAN.md, Fase 1/4 y 4):
+#   - GITOPS TOTAL (Phase 4): las Applications de plataforma (ingress-nginx,
+#     cert-manager, external-secrets, kyverno, keda, kube-prometheus-stack) se
+#     IMPORTAN — Argo CD instala y gobierna los operadores igual que en Azure.
+#     Quedan excluidas SOLO: ecommerce-apps (app-of-apps apuntando a las env
+#     apps de Azure), ecommerce-{dev,staging,prod}, external-dns (DNS de Azure),
+#     example-external-secret, ClusterSecretStore azure-keyvault + ExternalSecrets
+#     (local usa Secrets placeholder) y el ScaledObject order-worker
+#     (placeholder de Event Hubs).
+#   - ecommerce-local Application (nueva, Phase 4): el overlay se autogestiona
+#     vía Argo CD (git push → sync), mismo mecanismo que Azure.
+#   - ClusterIssuer letsencrypt-default → selfSigned (sin DNS ni ACME en floci).
+#   - Los 18 HPA se IMPORTAN (Phase 4): k3s trae metrics-server de fábrica; fix 13
+#     (exclusión de HPA) quedó superado.
+#   - ClusterIssuer letsencrypt-{staging,prod} siguen borrados (no hay ACME).
+#   - UIs expuestas con hosts *.localhost + SSO Keycloak local (Phase 4):
+#     argocd.localhost / grafana.localhost / auth.localhost.
 #   - ClusterSecretStore vault URL -> https://host.docker.internal:4577/<kv>
 #   - ecommerce-env-config -> hosts host.docker.internal (sidecars en el host)
 #   - images -> host.docker.internal:5000/localecommercefloci01/<svc>
 #
 # Uso:
-#   kubectl apply -k cluster/overlays/local
+#   kubectl apply -k cluster/overlays/local          # (después del bootstrap, ver fix 28)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -21,20 +31,35 @@ resources:
   # â”€â”€ Base completo (igual que dev) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   - ../../base
   # â”€â”€ Overlay local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  # issuer-default.yaml NO se referencia: cert-manager no se instala en local
-  # y patches/cert-manager-delete.yaml barre TODOS los ClusterIssuer del
-  # build (kind-wide). El archivo queda como documentaciÃ³n de la intenciÃ³n.
+  # issuer-default.yaml -> ClusterIssuer letsencrypt-default selfSigned (Phase 4):
+  # los ingresses lo referencian por nombre; local no tiene DNS/ACME, ver el archivo.
   - env-config.yaml
   - auth-realm-configmap.yaml
   - host-sidecar-egress-policy.yaml
+  # Secrets placeholder (local): en Azure los materializa external-secrets
+  # desde el Key Vault; en local no hay ClusterSecretStore, asi que el Secret
+  # grafana-admin-credentials se monta plano (el de Keycloak viene del base:
+  # services/auth/k8s/base/admin-credentials.yaml).
+  - grafana-admin-credentials.yaml
+  # ── SSO UIs (Phase 4): Argo CD OIDC + Grafana OAuth via Keycloak ──
+  - argocd-cm.yaml
+  - argocd-rbac-cm.yaml
+  - oidc-argocd-secret.yaml
+  - grafana-oauth-config.yaml
+  # Fase 5: Secret placeholder del client de Grafana (en Azure lo materializa
+  # el ExternalSecret grafana-oauth-credentials → Key Vault).
+  - grafana-oauth-credentials.yaml
+  # Fase 6: Secret placeholder del datasource/Postgres (en Azure lo materializa
+  # el ExternalSecret db-credentials → Key Vault).
+  - db-credentials.yaml
+  # ── GitOps (Phase 4): issuer local + Application autogestionada ──
+  - issuer-default.yaml
+  - ecommerce-local.yaml
 
-  # Exclusión de HPA (fix 13 durable): en nodo único el autoscaler satura el
-  # k3s; la limpieza runtime no sobrevive al proximo apply. Los deletes son
-  # POR NOMBRE (kustomize v5 no soporta kind-wide) y van INLINE en patches:
-  # un archivo kind: Kustomization/Component en resources:/components: exige
-  # un directorio, no un archivo (error "must build at directory").
+  # HPA (fix 13 revertido en Phase 4): k3s trae metrics-server de fábrica; los
+  # 18 HPA del base se importan sin saturar el nodo único. Ver fix 28.
 
-  # â”€â”€ Services (Phase 5 â€” core; cada servicio usa sus manifests BASE) â”€â”€â”€â”€
+  # ── Services (Phase 5 â€” core; cada servicio usa sus manifests BASE) â”€â”€â”€â”€
   - ../../../services/config-service/k8s/base
   - ../../../services/discovery-service/k8s/base
   - ../../../services/api-gateway/k8s/base
@@ -90,111 +115,89 @@ patches:
                     mountPath: /opt/keycloak/data/import/realm-export.json
                     subPath: realm-export.json
                 command: ["/opt/keycloak/bin/kc.sh"]
-                args: ["start-dev", "--import-realm", "--health-enabled=true"]
+                args: ["start-dev", "--import-realm", "--health-enabled=true", "--metrics-enabled=true"]
 
-  # â”€â”€ Data plane local: services con datasource -> Postgres sidecar â”€â”€â”€â”€â”€â”€
-  # Los configmaps base de estos servicios dejan H2 in-memory (demo), pero
-  # los env del CONTAINER tienen precedencia sobre envFrom (misma clave), asÃ­
-  # que se apunta explicito al sidecar Postgres del emulador (fix 18). El
-  # puerto es dinamico en el host (ver `docker port`); ddl-auto=update crea
-  # el schema sobre la DB `ecommerce` del sidecar y ENABLE_MOCK_DATA=true
-  # re-siembra los datos demo.
+  # ── UIs (Phase 4): hosts *.localhost ─────────────────────────────────────────────
+  # Los ingresses del base traen argocd.<domain> / grafana.<domain> / auth.<domain>;
+  # en local se reescriben a *.localhost (resuelve contra el nodo k3s: 10.42.0.1).
+  # El secretName del TLS queda igual (argocd-tls / grafana-tls / auth-tls) — el
+  # issuer local letsencrypt-default (selfSigned) puebla esos Secrets.
+  - target:
+      kind: Ingress
+      name: argocd
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: argocd.localhost
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: argocd.localhost
+  - target:
+      kind: Ingress
+      name: grafana
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: grafana.localhost
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: grafana.localhost
+  - target:
+      kind: Ingress
+      name: auth
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: auth.localhost
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: auth.localhost
+
+  # ---- Label env por ambiente (fix 27) ------------------------------------
+  # La base ya NO hardcodea env: production: cada overlay firma el valor REAL
+  # del ambiente en los labels del template del Pod (los ServiceMonitors lo
+  # relabelan desde el Pod, __meta_kubernetes_pod_label_env) y en el
+  # Namespace ecommerce.
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=ecommerce-platform
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/env
+        value: local
+  - target:
+      kind: Namespace
+      name: ecommerce
+    patch: |-
+      - op: add
+        path: /metadata/labels/env
+        value: local
+
+  # ── Fase 6: services con datasource → Postgres sidecar EN EL POD ──────
+  # Fix 30: se reemplaza el postgres del emulador (host.docker.internal con
+  # puerto DINAMICO, DB compartida `ecommerce`) por un sidecar postgres:16-
+  # alpine por pod (127.0.0.1:5432, DB PROPIA por servicio) — misma versión
+  # mayor que Azure (postgres_version=16) y comportamiento local == Azure.
+  # Los env SPRING_DATASOURCE_* del contenedor tienen precedencia sobre el
+  # envFrom del CM (el base ya no lleva jdbc:h2); credenciales desde el
+  # Secret db-credentials (placeholder local). ddl-auto=update crea el schema
+  # y ENABLE_MOCK_DATA=true re-siembra los datos demo.
   - target:
       kind: Deployment
       name: catalog-svc
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: catalog-svc
-      spec:
-        template:
-          spec:
-            containers:
-              - name: catalog-svc
-                env:
-                  - name: SPRING_DATASOURCE_URL
-                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
-                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
-                    value: org.postgresql.Driver
-                  - name: SPRING_DATASOURCE_USERNAME
-                    value: psqladmin
-                  - name: SPRING_DATASOURCE_PASSWORD
-                    value: <fuerte-sin-@>
-                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-                    value: update
+    path: patches/catalog-svc-postgres-sidecar.yaml
   - target:
       kind: Deployment
       name: order-svc
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: order-svc
-      spec:
-        template:
-          spec:
-            containers:
-              - name: order-svc
-                env:
-                  - name: SPRING_DATASOURCE_URL
-                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
-                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
-                    value: org.postgresql.Driver
-                  - name: SPRING_DATASOURCE_USERNAME
-                    value: psqladmin
-                  - name: SPRING_DATASOURCE_PASSWORD
-                    value: <fuerte-sin-@>
-                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-                    value: update
+    path: patches/order-svc-postgres-sidecar.yaml
   - target:
       kind: Deployment
       name: payment-svc
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: payment-svc
-      spec:
-        template:
-          spec:
-            containers:
-              - name: payment-svc
-                env:
-                  - name: SPRING_DATASOURCE_URL
-                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
-                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
-                    value: org.postgresql.Driver
-                  - name: SPRING_DATASOURCE_USERNAME
-                    value: psqladmin
-                  - name: SPRING_DATASOURCE_PASSWORD
-                    value: <fuerte-sin-@>
-                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-                    value: update
+    path: patches/payment-svc-postgres-sidecar.yaml
   - target:
       kind: Deployment
       name: inventory-svc
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: inventory-svc
-      spec:
-        template:
-          spec:
-            containers:
-              - name: inventory-svc
-                env:
-                  - name: SPRING_DATASOURCE_URL
-                    value: jdbc:postgresql://host.docker.internal:37865/ecommerce
-                  - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
-                    value: org.postgresql.Driver
-                  - name: SPRING_DATASOURCE_USERNAME
-                    value: psqladmin
-                  - name: SPRING_DATASOURCE_PASSWORD
-                    value: <fuerte-sin-@>
-                  - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-                    value: update
+    path: patches/inventory-svc-postgres-sidecar.yaml
 
   # â”€â”€ Ingresos local: hosts *.localhost â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   # El base deja el placeholder api.<domain> (lo resuelve el CD en Azure);
@@ -247,78 +250,12 @@ patches:
       kind: Application
       group: argoproj.io
       version: v1alpha1
-      name: ingress-nginx
-    patch: |-
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: ingress-nginx
-      $patch: delete
-  - target:
-      kind: Application
-      group: argoproj.io
-      version: v1alpha1
-      name: cert-manager
-    patch: |-
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: cert-manager
-      $patch: delete
-  - target:
-      kind: Application
-      group: argoproj.io
-      version: v1alpha1
       name: external-dns
     patch: |-
       apiVersion: argoproj.io/v1alpha1
       kind: Application
       metadata:
         name: external-dns
-      $patch: delete
-  - target:
-      kind: Application
-      group: argoproj.io
-      version: v1alpha1
-      name: external-secrets
-    patch: |-
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: external-secrets
-      $patch: delete
-  - target:
-      kind: Application
-      group: argoproj.io
-      version: v1alpha1
-      name: kyverno
-    patch: |-
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: kyverno
-      $patch: delete
-  - target:
-      kind: Application
-      group: argoproj.io
-      version: v1alpha1
-      name: keda
-    patch: |-
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: keda
-      $patch: delete
-  - target:
-      kind: Application
-      group: argoproj.io
-      version: v1alpha1
-      name: kube-prometheus-stack
-    patch: |-
-      apiVersion: argoproj.io/v1alpha1
-      kind: Application
-      metadata:
-        name: kube-prometheus-stack
       $patch: delete
   - target:
       kind: Application
@@ -414,28 +351,17 @@ patches:
         name: ecommerce-db-credentials
       $patch: delete
 
-# â”€â”€ Operators ausentes en local: exclusiÃ³n kind-wide (kustomize v5) â”€â”€â”€â”€â”€
-# Estos recursos pertenecen a CRDs de operators (cert-manager, kyverno,
-# external-secrets, kube-prometheus-stack, KEDA) que el app-of-apps de Argo
-# instala en Azure pero NO en el bootstrap local. Sin las CRDs el apply
-# falla ("no matches for kind"), asÃ­ que se barren del build completo.
-# R4 (ESO <-> Key Vault emulado) queda PENDIENTE: local usa Secrets planos.
+# ── Phase 4: GITOPS TOTAL — los operadores viven EN Argo CD ─────────────────────────────────
+# ingress-nginx, cert-manager, external-secrets, kyverno, keda y
+# kube-prometheus-stack se instalan via sus Applications (importadas del base,
+# ver header). Quedan excluidos SOLO los recursos que dependen de Azure o de
+# secrets reales: ClusterIssuers ACME (letsencrypt-*), ClusterSecretStore
+# azure-keyvault, ExternalSecrets y el ScaledObject order-worker.
 # NOTA: los deletes kind-wide (SM sin nombre) FALLAN en kustomize v5
 # ("no matches for Id"/"trouble configuring PatchTransformer"), por eso la
-# exclusiÃ³n es POR NOMBRE, consistente con el resto del overlay.
+# exclusion es POR NOMBRE, consistente con el resto del overlay.
 
-  # â”€â”€ ExclusiÃ³n por nombre: cert-manager (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  - target:
-      kind: ClusterIssuer
-      group: cert-manager.io
-      version: v1
-      name: selfsigned
-    patch: |-
-      apiVersion: cert-manager.io/v1
-      kind: ClusterIssuer
-      metadata:
-        name: selfsigned
-      $patch: delete
+  # cert-manager: se eliminan SOLO los issuers ACME (letsencrypt-*); local = selfSigned
   - target:
       kind: ClusterIssuer
       group: cert-manager.io
@@ -459,53 +385,10 @@ patches:
         name: letsencrypt-prod
       $patch: delete
 
-  # â”€â”€ ExclusiÃ³n por nombre: kyverno (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  - target:
-      kind: ClusterPolicy
-      group: kyverno.io
-      version: v1
-      name: disallow-latest-tag
-    patch: |-
-      apiVersion: kyverno.io/v1
-      kind: ClusterPolicy
-      metadata:
-        name: disallow-latest-tag
-      $patch: delete
-  - target:
-      kind: ClusterPolicy
-      group: kyverno.io
-      version: v1
-      name: disallow-plain-secrets
-    patch: |-
-      apiVersion: kyverno.io/v1
-      kind: ClusterPolicy
-      metadata:
-        name: disallow-plain-secrets
-      $patch: delete
-  - target:
-      kind: ClusterPolicy
-      group: kyverno.io
-      version: v1
-      name: require-labels
-    patch: |-
-      apiVersion: kyverno.io/v1
-      kind: ClusterPolicy
-      metadata:
-        name: require-labels
-      $patch: delete
-  - target:
-      kind: ClusterPolicy
-      group: kyverno.io
-      version: v1
-      name: require-resources
-    patch: |-
-      apiVersion: kyverno.io/v1
-      kind: ClusterPolicy
-      metadata:
-        name: require-resources
-      $patch: delete
-
-  # â”€â”€ ExclusiÃ³n por nombre: external-secrets (CRDs ausentes en local) â”€â”€â”€â”€â”€
+  # kyverno: TODAS las ClusterPolicies se importan (paridad con Azure);
+  # disallow-plain-secrets queda en Audit (no bloquea los secrets placeholder).
+  # external-secrets: se excluyen el ClusterSecretStore azure-keyvault y los
+  # ExternalSecrets (local usa Secrets placeholder); el operador corre igual.
   - target:
       kind: ClusterSecretStore
       group: external-secrets.io
@@ -529,64 +412,50 @@ patches:
         name: keycloak-admin-credentials
       $patch: delete
 
-  # â”€â”€ ExclusiÃ³n por nombre: monitoring (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   - target:
-      kind: PrometheusRule
-      group: monitoring.coreos.com
-      version: v1
-      name: jvm-memory-pressure
+      kind: ExternalSecret
+      group: external-secrets.io
+      version: v1beta1
+      name: grafana-admin-credentials
     patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
+      apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
       metadata:
-        name: jvm-memory-pressure
-      $patch: delete
-  - target:
-      kind: PrometheusRule
-      group: monitoring.coreos.com
-      version: v1
-      name: order-svc-slo
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: order-svc-slo
-      $patch: delete
-  - target:
-      kind: PrometheusRule
-      group: monitoring.coreos.com
-      version: v1
-      name: service-down
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: service-down
-      $patch: delete
-  - target:
-      kind: PrometheusRule
-      group: monitoring.coreos.com
-      version: v1
-      name: service-high-latency
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: service-high-latency
-      $patch: delete
-  - target:
-      kind: PrometheusRule
-      group: monitoring.coreos.com
-      version: v1
-      name: service-high-error-rate
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: service-high-error-rate
+        name: grafana-admin-credentials
       $patch: delete
 
-  # â”€â”€ ExclusiÃ³n por nombre: KEDA (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # Fase 5: el ExternalSecret event-hubs-credentials (nuevo en el base para
+  # Event Hubs SASL) no aplica en local — no hay Event Hubs, el Kafka local
+  # usa PLAINTEXT y los patches SASL solo existen en overlays Azure.
+  - target:
+      kind: ExternalSecret
+      group: external-secrets.io
+      version: v1beta1
+      name: event-hubs-credentials
+    patch: |-
+      apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
+      metadata:
+        name: event-hubs-credentials
+      $patch: delete
+
+  # Fase 6: el ExternalSecret db-credentials (nuevo en el base para el
+  # datasource Postgres + Keycloak Azure) no aplica en local — el Secret
+  # placeholder db-credentials corre plano.
+  - target:
+      kind: ExternalSecret
+      group: external-secrets.io
+      version: v1beta1
+      name: db-credentials
+    patch: |-
+      apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
+      metadata:
+        name: db-credentials
+      $patch: delete
+
+  # KEDA: se excluye SOLO el ScaledObject order-worker (placeholder de Event Hubs
+  # + envs $EVENT_HUBS_SASL_* inexistentes); el operador corre igual.
   - target:
       kind: ScaledObject
       group: keda.sh
@@ -599,408 +468,9 @@ patches:
         name: order-worker
       $patch: delete
 
-  # â”€â”€ ExclusiÃ³n por nombre: ServiceMonitors (CRDs ausentes en local) â”€â”€â”€â”€â”€â”€
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: analytics-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: analytics-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: api-gateway
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: api-gateway
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: auth
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: auth
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: bff-web
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: bff-web
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: cart-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: cart-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: catalog-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: catalog-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: checkout-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: checkout-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: config-service
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: config-service
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: discovery-service
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: discovery-service
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: inventory-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: inventory-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: notification-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: notification-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: order-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: order-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: otel-collector
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: otel-collector
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: payment-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: payment-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: recommendation-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: recommendation-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: returns-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: returns-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: search-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: search-svc
-      $patch: delete
-  - target:
-      kind: ServiceMonitor
-      group: monitoring.coreos.com
-      version: v1
-      name: shipping-svc
-    patch: |-
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: shipping-svc
-      $patch: delete
-
-  # Exclusión de HPA (fix 13 durable) — 18 servicios. Deletes POR NOMBRE
-  # (kustomize v5 no soporta kind-wide); contenido de hpa-delete.yaml inline.
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: analytics-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: analytics-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: api-gateway
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: api-gateway
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: auth
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: auth
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: bff-web
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: bff-web
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: cart-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: cart-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: catalog-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: catalog-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: checkout-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: checkout-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: config-service
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: config-service
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: discovery-service
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: discovery-service
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: frontend
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: frontend
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: inventory-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: inventory-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: notification-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: notification-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: order-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: order-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: payment-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: payment-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: recommendation-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: recommendation-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: returns-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: returns-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: search-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: search-svc
-      $patch: delete
-  - target:
-      kind: HorizontalPodAutoscaler
-      group: autoscaling
-      version: v2
-      name: shipping-svc
-    patch: |-
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: shipping-svc
-      $patch: delete
-
-# Pod Security (PSA) labels â€” igual que dev.
+  # Exclusión de HPA revertida (Phase 4): los 18 HPA del base se importan.
+  # k3s incluye metrics-server por defecto; el autoscaler ya no satura el
+  # nodo único (ver docs/fixes/28-uis-ingress-tls-sso-gitops-floci.md).
 components:
   - ../../../security/pod-security
 

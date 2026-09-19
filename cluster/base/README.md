@@ -1,7 +1,7 @@
 # cluster/base — Bootstrap GitOps de plataforma
 
 Este directorio contiene la **capa de plataforma** del clúster e-commerce
-(Fase 3 de [docs/plan-ecommerce-k8s.md](../../docs/plan-ecommerce-k8s.md)).
+(ver [docs/PLAN.md](../../docs/PLAN.md)).
 Levanta la infraestructura compartida que todo servicio necesita (la Fase 4
 crea `services/` por encima).
 
@@ -118,7 +118,7 @@ external-dns está explicitamente mencionado (chart vs manifiesto git-path).
 | `external-secrets/cluster-secret-store.yaml` | `<kv-name>`, `<identity-client-id>`, `AZURE_TENANT_ID` | tu Key Vault (salida de infra/terraform) y la managed identity de ESO |
 | `external-secrets/example-external-secret.yaml` | secreto de vault `db-password` | cualquier secreto de vault para exponer como `ecommerce-db-credentials` |
 | `keda/scaledobject-example.yaml` | `<event-hubs-ns>` + nombres de env `EVENT_HUBS_SASL_USERNAME/PASSWORD` en el Deployment `order-worker` | tu namespace de Event Hubs y el env del deployment |
-| `monitoring/kube-prometheus-stack/values.yaml` | `<grafana-admin-password>` | un password de admin real (o adminPasswordSecret via external-secrets) |
+| `monitoring/kube-prometheus-stack/values.yaml` | `grafana.admin.existingSecret: grafana-admin-credentials` | secret `grafana-admin-password` sembrado en el Key Vault (siembra Fase 5); el overlay local ya trae su placeholder `admin` |
 | todos los campos `targetRevision` / `version:` | comentarios `# bump me` | chequeá los repos de charts para las últimas versiones estables |
 
 ## Notas y trade-offs conocidos

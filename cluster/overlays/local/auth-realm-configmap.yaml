@@ -40,7 +40,14 @@ data:
           "credentials": [
             { "type": "password", "value": "demo123", "temporary": false }
           ],
-          "realmRoles": [ "user" ]
+          "realmRoles": [ "user" ],
+          "groups": [ "ecommerce-admins" ]
+        }
+      ],
+      "groups": [
+        {
+          "name": "ecommerce-admins",
+          "description": "Platform administrators — mapped to role:admin in Argo CD and Admin in Grafana"
         }
       ],
       "clients": [
@@ -77,6 +84,68 @@ data:
           "attributes": {
             "use.jwks.url": "true"
           }
+        },
+        {
+          "clientId": "argocd",
+          "name": "Argo CD (GitOps UI)",
+          "description": "Confidential client — Argo CD OIDC login. Secret must match the oidc-argocd Kubernetes Secret (returned via $oidc-argocd:clientSecret). REPLACE the placeholder.",
+          "enabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+          "redirectUris": [ "https://argocd.localhost/auth/callback" ],
+          "webOrigins": [ "https://argocd.localhost" ],
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "claim.name": "groups"
+              }
+            }
+          ]
+        },
+        {
+          "clientId": "grafana",
+          "name": "Grafana (observability UI)",
+          "description": "Confidential client — Grafana generic OAuth login. Secret must match GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET in the Secret grafana-oauth-credentials (placeholder local, ExternalSecret → Key Vault en Azure). REPLACE the placeholder.",
+          "enabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+          "redirectUris": [ "https://grafana.localhost/login/generic_oauth" ],
+          "webOrigins": [ "https://grafana.localhost" ],
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "claim.name": "groups"
+              }
+            }
+          ]
         }
       ]
     }

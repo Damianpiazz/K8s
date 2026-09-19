@@ -14,13 +14,21 @@ spec:
     metadata:
       labels:
         app: auth
-        env: production
         app.kubernetes.io/part-of: ecommerce-platform
     spec:
       serviceAccountName: auth
       containers:
         - name: auth
           image: acr.azurecr.io/auth:latest
+          # start-dev --import-realm replica el ENTRYPOINT de la imagen;
+          # --health-enabled=true hace que los probes /health/* respondan y
+          # --metrics-enabled=true expone /metrics en el puerto HTTP principal
+          # (8080). Keycloak <= 24 sirve health + metrics en el puerto main;
+          # si la imagen sube a Keycloak 25+, /metrics y /health migran al
+          # puerto de management (9000) y el ServiceMonitor + los probes deben
+          # migrar juntos.
+          command: ["/opt/keycloak/bin/kc.sh"]
+          args: ["start-dev", "--import-realm", "--health-enabled=true", "--metrics-enabled=true"]
           ports:
             - name: http
               containerPort: 8080

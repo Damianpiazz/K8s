@@ -44,6 +44,13 @@ configMapGenerator:
       labels:
         grafana_dashboard: "1"
         app.kubernetes.io/part-of: ecommerce-platform
+  - name: grafana-dashboard-red-metrics
+    files:
+      - red-metrics.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+        app.kubernetes.io/part-of: ecommerce-platform
 
 # generators are suffixed with a content hash by kustomize; replacements keep
 # the label stable regardless of the generated name.

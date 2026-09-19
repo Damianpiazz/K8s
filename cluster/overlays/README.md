@@ -30,6 +30,7 @@ Kustomize usa el patrón **base + overlay**:
 |---|---|---|---|---|
 | Certificate issuer | `issuer-default.yaml` (recurso nuevo por overlay) | Let's Encrypt **staging** | Let's Encrypt **staging** | Let's Encrypt **production** |
 | URL de Key Vault | `patches/secret-store-patch.yaml` (parchea `ClusterSecretStore/azure-keyvault` del base) | `kv-dev-ecommerce` | `kv-staging-ecommerce` | `kv-prod-ecommerce` |
+| Label `env` de pods + Namespace ecommerce | parche inline en cada kustomization (fix 27) | `dev` | `staging` | `production` |
 | Config de ambiente | `env-config.yaml` (ConfigMap nuevo por overlay) | `ENVIRONMENT=dev`, `LOG_LEVEL=DEBUG` | `ENVIRONMENT=staging`, `LOG_LEVEL=INFO` | `ENVIRONMENT=prod`, `LOG_LEVEL=INFO` |
 | Zona DNS (external-dns) | no se parchea acá — se setea en la zona de Azure DNS + `--domain-filter` en base | — | — | — |
 
@@ -112,7 +113,7 @@ Un clúster puede alojar varios ambientes (los namespaces de dev + staging +
 prod ya existen en base) apuntando diferentes Applications a diferentes paths
 de overlay — o cada ambiente tiene su propio clúster y su propia Application
 con el path de overlay correspondiente. Ambos son válidos; el plan asume
-**un clúster por ambiente** (ver `docs/plan-ecommerce-k8s.md`), así que cada
+**un clúster por ambiente** (ver `docs/PLAN.md`), así que cada
 instancia de Argo CD despliega exactamente un overlay.
 
 ### Preferí `kustomize build` sobre `kubectl apply -k`
@@ -134,24 +135,23 @@ namespace `ecommerce`:
 - `disallow-latest-tag` — las imágenes NO deben usar el tag literal `latest`.
 - `require-labels` — cada Pod debe llevar los labels `app:` y `env:`.
 
-**Esto es intencional, no un bug.** Los manifiestos base de los servicios usan
-`acr.azurecr.io/<svc>:latest` como default amigable para dev, pero el **flujo
-de despliegue real nunca aplica `latest`**: el pipeline de CD
-(`.github/workflows/cd.yml`) reescribe el `newTag` de cada overlay al SHA del
-commit y Argo CD/`kubectl` aplican ese output renderizado. `latest` solo se
-referencía antes de que el CD corra.
+**Esto es intencional, no un bug.** Los manifiestos **base** de los servicios usan
+`acr.azurecr.io/<svc>:latest` como default amigable de lectura, pero ningún
+overlay renderiza `latest`: el `images:` de cada overlay fija el tag REAL del
+ambiente (fix 27) — local → SHA corto gestionado por `scripts/build-push.ps1`;
+dev/staging/prod → SHA largo del último commit de `main`, reescrito por el
+pipeline de CD (`.github/workflows/cd.yml`) en cada push.
 
 Consecuencias:
 
-- ✅ `require-labels` — todos los servicios setean `app: <svc>` y los labels
-  `env:` en el template del Pod (verificalo con el passthrough de
-  `kubectl apply -k`). El VALOR de `env:` en base es siempre `production` —
-  ver la nota del gap cosmético abajo.
-- ⛔ Si corrés `kubectl apply -k cluster/overlays/dev` **antes** de que el CD
-  reescriba los tags, la creación de Pods será **rechazada** por
-  `disallow-latest-tag`. Eso es Kyverno haciendo su trabajo.
-- 🔧 Para aplicar manualmente, o corré primero el flujo de CD, o fijá un tag
-  explícito en el overlay antes de aplicar, p. ej.:
+- ✅ `require-labels` — todos los servicios setean `app: <svc>` y el label
+  `env:` en el template del Pod. El VALOR de `env:` lo firma cada overlay
+  (fix 27): `dev`, `staging`, `production`, `local` — nada de valores falsos.
+- ✅ `kubectl apply -k cluster/overlays/{dev,staging,prod}` directo ya NO es
+  rechazado por `disallow-latest-tag` (fix 27): el `images:` de cada overlay
+  pinnea un tag real (SHA). El único blocker de un apply directo hoy es el
+  registry placeholder `acr.azurecr.io` — reemplazalo por tu ACR real una vez
+  (ver auditoría de placeholders abajo) o fijá explícitamente el tag:
 
 ```bash
 # después de un push real de imagen
@@ -171,13 +171,13 @@ kustomize edit set image acr.azurecr.io/catalog-svc=acr.azurecr.io/catalog-svc:1
   `replicas: 3`) van en los manifiestos de cada servicio.
 - **Parchear `.github/` o terraform** — mantené la config de infra con la fase
   dueña.
-- **Parchear el label `env:` del template del Pod** — los Deployments base
-  hardcodean `env: production` en el template del Pod y los overlays no
-  parchean ese label. La política `require-labels` de Kyverno solo requiere
-  que el label exista (el valor no importa), así que los Pods no se rechazan.
-  Para el valor correcto por ambiente (p. ej. `env: dev`) en los labels de Pod
-  y métricas de Prometheus, un parche de overlay por servicio es una tarea de
-  estudiante posterior.
+- **Parchear el label `env:`** — ya no hace falta (fix 27): la base ya NO
+  hardcodea `env: production`; cada overlay suma un parche inline que firma el
+  valor REAL del ambiente en los labels del template del Pod y del Namespace
+  ecommerce (selector: `app.kubernetes.io/part-of=ecommerce-platform`). Los
+  ServiceMonitors relabelan ese label (`__meta_kubernetes_pod_label_env`), así
+  que los dashboards filtran por entorno sin acoplarse al nombre del
+  namespace.
 
 ## Auditoría de placeholders
 

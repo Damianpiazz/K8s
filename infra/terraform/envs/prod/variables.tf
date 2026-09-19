@@ -182,6 +182,25 @@ variable "eventhubs" {
   }
 }
 
+# Key Vault (Fase 5)
+variable "keycloak_admin_username" {
+  type        = string
+  description = "Keycloak admin bootstrap username (start-dev)."
+  default     = "admin"
+}
+variable "argocd_oidc_client_secret" {
+  type        = string
+  sensitive   = true
+  description = "Keycloak client 'argocd' secret — syncs with realm client.secret and Secret oidc-argocd. Default matches the realm placeholder."
+  default     = "REPLACE_WITH_A_SECURE_CLIENT_SECRET"
+}
+variable "grafana_oauth_client_secret" {
+  type        = string
+  sensitive   = true
+  description = "Keycloak client 'grafana' secret — syncs with realm client.secret and Secret grafana-oauth-credentials."
+  default     = "REPLACE_WITH_A_SECURE_CLIENT_SECRET"
+}
+
 # DNS
 variable "dns_zone_name" {
   type        = string

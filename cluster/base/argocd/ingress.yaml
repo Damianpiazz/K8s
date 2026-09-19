@@ -1,0 +1,47 @@
+---
+# Argo CD UI — Ingress (Phase 4: production-ready UI).
+#
+# Termination + SSO:
+#   - Host: argocd.<domain>. Each environment overlay patches this host to its
+#     own value (local → argocd.localhost; Azure keeps the placeholder and
+#     substitutes the real DNS zone when the Azure bootstrap lands — Fase 5,
+#     see docs/PLAN.md). external-dns picks the hostname up and creates the
+#     A record.
+#   - TLS: cert-manager ClusterIssuer `letsencrypt-default` (per-environment
+#     issuer: local = self-signed, Azure = Let's Encrypt staging/prod). The
+#     certificate lands in Secret argocd-tls.
+#   - Authentication: Keycloak OIDC via the `argocd-cm` ConfigMap each overlay
+#     ships (oidc.config + $oidc-argocd:clientSecret). Anonymous login is not
+#     exposed — the SSO button is the only entry.
+#   - backend-protocol HTTP: the argocd-server pod runs with `--insecure` (the
+#     install kustomization strips pod TLS), so nginx talks plain HTTP to it.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd
+  namespace: argocd
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-default
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Underlying service is HTTP-only; TLS terminates at the ingress
+    # (argocd-server runs --insecure from the install kustomization).
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: argocd.<domain>
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - argocd.<domain>
+      secretName: argocd-tls

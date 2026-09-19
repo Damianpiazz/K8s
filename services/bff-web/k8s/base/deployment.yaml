@@ -14,7 +14,6 @@ spec:
     metadata:
       labels:
         app: bff-web
-        env: production
         app.kubernetes.io/part-of: ecommerce-platform
     spec:
       serviceAccountName: bff-web

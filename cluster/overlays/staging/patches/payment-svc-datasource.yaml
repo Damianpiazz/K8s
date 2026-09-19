@@ -1,0 +1,32 @@
+---
+# Fase 6 — datasource de payment-svc → Azure Database for PostgreSQL.
+# Base de datos: payments (postgres_databases del terraform).
+# NOTA: el store de PaymentService sigue siendo el HashMap en memoria (sin JPA
+# aún); el datasource ya apunta a Postgres para que el arranque no caiga y la
+# paridad quede lista cuando aterrice la implementación JPA (ver fix 30).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-svc
+spec:
+  template:
+    spec:
+      containers:
+        - name: payment-svc
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/payments
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: org.postgresql.Driver
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update

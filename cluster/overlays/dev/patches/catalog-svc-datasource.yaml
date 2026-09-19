@@ -1,0 +1,35 @@
+---
+# Fase 6 — datasource de catalog-svc → Azure Database for PostgreSQL.
+# El base ya no define datasource (era jdbc:h2 en memoria): cada overlay lo
+# inyecta por env, con la URL apuntando al Flexible Server del entorno.
+#   ${DB_HOST}:${DB_PORT} vienen de ecommerce-env-config (FQDNs Azure).
+#   DB_NAME del base es compartido (ecommerce) → la base de datos se fija por
+#   servicio (catalog), igual que en el terraform (postgres_databases).
+# Credenciales: Secret db-credentials (ExternalSecret → Key Vault: db-username
+# / db-password; fix 30).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-svc
+spec:
+  template:
+    spec:
+      containers:
+        - name: catalog-svc
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/catalog
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: org.postgresql.Driver
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update

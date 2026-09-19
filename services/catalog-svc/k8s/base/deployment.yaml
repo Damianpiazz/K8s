@@ -14,7 +14,6 @@ spec:
     metadata:
       labels:
         app: catalog-svc
-        env: production
         app.kubernetes.io/part-of: ecommerce-platform
     spec:
       serviceAccountName: catalog-svc

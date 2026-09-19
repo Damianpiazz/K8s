@@ -30,6 +30,7 @@ resources:
   # ── Argo CD Applications (root + children) ──────────────────────────────
   - argocd/app-of-apps.yaml
   - argocd/applications/ingress-nginx.yaml
+  - argocd/ingress.yaml # Argo CD UI (Phase 4): host/TLS patched per overlay; SSO lives in the overlay's argocd-cm
   - argocd/applications/cert-manager.yaml
   - argocd/applications/external-dns.yaml
   - argocd/applications/external-secrets.yaml
@@ -54,6 +55,9 @@ resources:
   # ── external-secrets (CRDs installed by the Application) ────────────────
   - external-secrets/cluster-secret-store.yaml
   - external-secrets/example-external-secret.yaml
+  - external-secrets/grafana-admin-credentials.yaml
+  - external-secrets/event-hubs-credentials.yaml # Fase 5: Kafka SASL via KV (local lo borra)
+  - external-secrets/db-credentials.yaml # Fase 6: credenciales Postgres servicios + Keycloak (local lo borra)
 
   # ── Kyverno policies (CRDs installed by the Application) ────────────────
   - kyverno/policies/require-labels.yaml

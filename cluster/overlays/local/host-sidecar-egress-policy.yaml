@@ -1,10 +1,13 @@
 ---
-# Local-only egress allowance: data sidecars del emulador (fix 18).
+# Local-only egress allowance: sidecars de datos del emulador (fix 18 / fix 30).
 #
 # Las NetworkPolicies base de los services abren 443/5432 a 0.0.0.0/0 pensando
-# en Azure (Postgres 5432). El sidecar Postgres del emulador usa un PUERTO
-# DINAMICO (p.ej. 37865; ver `docker port floci-az-pg-psql-*`) y el Kafka local
-# escucha en 9093, así que el default-deny egress bloquea las conexiones al host.
+# en Azure (Postgres 5432). El Kafka local escucha en 9093, así que el
+# default-deny egress bloquearía las conexiones al host.
+# NOTA (fix 30): los 4 services con datasource (catalog/order/payment/inventory)
+# ya NO necesitan egress al host — corren su sidecar postgres:16-alpine EN EL
+# POD (127.0.0.1). El egress al host queda SOLO para Kafka (notification-svc
+# consumer + checkout-svc productor).
 #
 # Esta policy ES ADITIVA (las NetworkPolicies del namespace se unen): solo
 # agrega egress hacia la pasarela del bridge Docker (172.22.0.1 = el HOST,
@@ -23,10 +26,6 @@ spec:
       - key: app
         operator: In
         values:
-          - catalog-svc
-          - order-svc
-          - payment-svc
-          - inventory-svc
           - notification-svc
           - checkout-svc
   policyTypes:
@@ -36,7 +35,5 @@ spec:
         - ipBlock:
             cidr: 172.22.0.1/32
       ports:
-        - port: 37865
-          protocol: TCP
         - port: 9093
           protocol: TCP

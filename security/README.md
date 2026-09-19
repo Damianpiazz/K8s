@@ -102,4 +102,4 @@ entonces tiene huecos que cerrar, y los warnings de PSA son visibles).
 - `services/*/k8s/base/{deployment,serviceaccount,networkpolicy}.yaml` (datos de PSA, automount de SA, egress DNS)
 - `cluster/base/kyverno/policies/*` (exclusiones de namespaces, precedente de Audit)
 - `cluster/base/external-secrets/*` (nombres de claves de ESO → racional del modo Audit)
-- `docs/plan-ecommerce-k8s.md` (§4.6 visión de seguridad, §8 requisito de PSA restricted)
+- `docs/PLAN.md` (Fase 3 — desacoplamiento de entorno; seguridad de red en `security/network-policies/`)

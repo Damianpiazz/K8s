@@ -1,0 +1,31 @@
+---
+# Patch: SASL/Event Hubs credentials para el consumer Kafka de notification-svc
+# (DEV, Fase 5).
+#
+# Mismo mecanismo que checkout-svc-sasl.yaml: el Secret event-hubs-credentials
+# (ExternalSecret del base → Key Vault) alimenta la JAAS config del consumer.
+# El switch NOTIFICATIONS_KAFKA_ENABLED=true viene del ecommerce-env-config.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-svc
+spec:
+  template:
+    spec:
+      containers:
+        - name: notification-svc
+          env:
+            - name: EVENT_HUBS_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: event-hubs-credentials
+                  key: sasl-username
+            - name: EVENT_HUBS_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: event-hubs-credentials
+                  key: sasl-password
+            - name: SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
+              value: 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${EVENT_HUBS_SASL_USERNAME}" password="${EVENT_HUBS_SASL_PASSWORD}";'
+            - name: SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
+              value: PLAIN

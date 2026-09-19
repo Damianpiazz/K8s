@@ -3,7 +3,11 @@
 #
 # Services consume this via envFrom in their Deployments (Phase 5+).
 # Values reflect Azure-managed resources created by infra/terraform (Phase 2).
-# Replace placeholder FQDNs with actual terraform outputs.
+# Los nombres siguen la convención de los módulos (suffix del tfvars:
+# tppractico01) — ajustar <suffix> en cada despliegue real:
+#   psql-<env>-ecommerce-<suffix>.postgres.database.azure.com
+#   redis-<env>-ecommerce-<suffix>.redis.cache.windows.net
+#   eh-<env>-ecommerce-<suffix>.servicebus.windows.net:9093 (Kafka bootstrap)
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,16 +20,22 @@ data:
   ENVIRONMENT: dev
   LOG_LEVEL: DEBUG
 
-  # ── Data connections (Azure-managed, replace with terraform outputs) ────
-  DB_HOST: pg-dev-ecommerce.postgres.database.azure.com
+  # ── Data connections (Azure-managed) ──────────────────────────────────
+  DB_HOST: psql-dev-ecommerce-<suffix>.postgres.database.azure.com
   DB_PORT: "5432"
   DB_NAME: ecommerce
-  REDIS_HOST: redis-dev-ecommerce.redis.cache.windows.net
+  REDIS_HOST: redis-dev-ecommerce-<suffix>.redis.cache.windows.net
   REDIS_PORT: "6380"
 
-  # ── Messaging (Azure Event Hubs Kafka endpoint) ────────────────────────
-  KAFKA_BOOTSTRAP: ns-dev-ecommerce.servicebus.windows.net:9093
+  # ── Messaging (Azure Event Hubs Kafka endpoint, SASL_SSL) ────────────
+  # Las credenciales SASL viajan en el Secret event-hubs-credentials
+  # (ExternalSecret → Key Vault); ver patches/checkout-svc-sasl.yaml y
+  # patches/notification-svc-sasl.yaml.
+  KAFKA_BOOTSTRAP: eh-dev-ecommerce-<suffix>.servicebus.windows.net:9093
   KAFKA_SECURITY_PROTOCOL: SASL_SSL
+  # Switches de productor/consumidor Kafka (base los apaga para tests/CI).
+  CHECKOUT_EVENTS_KAFKA_ENABLED: "true"
+  NOTIFICATIONS_KAFKA_ENABLED: "true"
 
   # ── Feature flags (dev-only extras) ────────────────────────────────────
   ENABLE_SWAGGER: "true"

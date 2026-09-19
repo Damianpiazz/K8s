@@ -14,18 +14,11 @@
       { "name": "user",  "description": "Regular e-commerce users" }
     ]
   },
-  "users": [
+  "users": [],
+  "groups": [
     {
-      "username": "demo",
-      "enabled": true,
-      "email": "demo@ecommerce.local",
-      "firstName": "Demo",
-      "lastName": "User",
-      "emailVerified": true,
-      "credentials": [
-        { "type": "password", "value": "demo123", "temporary": false }
-      ],
-      "realmRoles": [ "user" ]
+      "name": "ecommerce-admins",
+      "description": "Platform administrators — mapped to role:admin in Argo CD and Admin in Grafana"
     }
   ],
   "clients": [
@@ -62,6 +55,68 @@
       "attributes": {
         "use.jwks.url": "true"
       }
+    },
+    {
+      "clientId": "argocd",
+      "name": "Argo CD (GitOps UI)",
+      "description": "Confidential client — Argo CD OIDC login. Secret must match the oidc-argocd Kubernetes Secret (returned via $oidc-argocd:clientSecret). REPLACE the placeholder.",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+      "redirectUris": [ "https://argocd.<domain>/auth/callback" ],
+      "webOrigins": [ "https://argocd.<domain>" ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "grafana",
+      "name": "Grafana (observability UI)",
+      "description": "Confidential client — Grafana generic OAuth login. Secret must match GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET in each overlay's grafana-oauth-config ConfigMap. REPLACE the placeholder.",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+      "redirectUris": [ "https://grafana.<domain>/login/generic_oauth" ],
+      "webOrigins": [ "https://grafana.<domain>" ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
     }
   ]
 }

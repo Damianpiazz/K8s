@@ -120,11 +120,13 @@ spec:
   jobLabel: app
   endpoints:
     - port: http
-      # Keycloak 24 exposes Prometheus metrics at /metrics (NOT
-      # /actuator/prometheus — that path only exists on the Spring Boot
-      # services). In prod, the metrics endpoint may require a token: enable
-      # bearerTokenSecret on this endpoint or expose /metrics through the
-      # realm's admin (see Keycloak docs "Enabling Prometheus metrics").
+      # Keycloak 24 (con --metrics-enabled=true) sirve /metrics en el puerto
+      # HTTP principal (8080); /actuator/prometheus no existe en Keycloak (es
+      # de los servicios Spring Boot). Si la imagen sube a Keycloak 25+,
+      # /metrics (y /health) migran al puerto de management 9000: mover este
+      # endpoint y los probes juntos. En Azure/prod el endpoint puede requerir
+      # token: agregar bearerTokenSecret a este endpoint (preocupación de
+      # fase 3/5 — NO implementado aquí).
       path: /metrics
       interval: 30s
       honorLabels: true

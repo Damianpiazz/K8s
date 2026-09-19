@@ -2,7 +2,9 @@
 # Kyverno ClusterPolicy: require app + env labels on workloads.
 #
 # Scope: every Pod in namespaces EXCLUDED below must carry the labels
-#   app: <name>   and   env: <production|platform|...>
+#   app: <name>   and   env: <local|dev|staging|production|platform|...>
+# (fix 27) the env value is signed per overlay — the base no longer hardcodes
+# `production` on the ecommerce workloads.
 # Chart-managed namespaces are excluded (Helm charts set
 # app.kubernetes.io/name, not the plain `app` label).
 #

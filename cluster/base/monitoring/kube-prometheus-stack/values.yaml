@@ -5,7 +5,7 @@
 #   - Argo CD Application kube-prometheus-stack (multi-source, $values path)
 #   - helmfile.yaml (alternative bootstrap)
 #
-# Design goals (see docs/plan-ecommerce-k8s.md):
+# Design goals (see docs/PLAN.md):
 #   - Cost-conscious for a student cluster: Alertmanager off, default rules off,
 #     short Prometheus retention, Grafana WITHOUT persistent storage.
 #   - Selectors are OPENED so the stack discovers the ServiceMonitors the
@@ -22,11 +22,38 @@ alertmanager:
   enabled: false
 
 grafana:
-  # PLACEHOLDER — change this, or better: override it via the
-  # grafana.spec.adminPasswordSecret (external-secrets) in Phase 4.
-  adminPassword: <grafana-admin-password>
+  # Admin credentials via external-secrets (fix 27): the Grafana subchart
+  # (8.4.x, bundled by kube-prometheus-stack 61.9.0) reads the key
+  # `admin-password` (admin.passwordKey default) from the Secret named in
+  # admin.existingSecret. dev/staging/prod materialise that Secret with the
+  # ExternalSecret `grafana-admin-credentials` → Azure Key Vault (vault secret
+  # `grafana-admin-password`); the local overlay ships its own placeholder
+  # Secret instead. No password literal ever lives in this file.
+  admin:
+    existingSecret: grafana-admin-credentials
   persistence:
     enabled: false # no PVC — dashboards are provisioned via ConfigMaps
+  # Keycloak OAuth (Phase 4): ONLY the ConfigMap NAME lives here — the actual
+  # GF_* env vars are per-environment (hosts/URLs differ), shipped by each
+  # overlay's grafana-oauth-config.yaml. The Grafana subchart (8.4.x) injects
+  # ConfigMaps listed in envFromConfigMaps as env vars into the pod. NOTE: the
+  # chart expects OBJECTS ({name: ...}), not plain strings — a string list
+  # renders "name: <no value>" in the pod envFrom (verified against chart 8.4.4).
+  envFromConfigMaps:
+    - name: grafana-oauth-config
+  # Client secret (Fase 5): moved OUT of the ConfigMap into a Secret. The
+  # overlay ConfigMaps no longer carry GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET;
+  # this env var (envValueFrom, supported by the chart 8.4.4 — _pod.tpl
+  # renders .Values.envValueFrom) injects it from the Secret
+  # grafana-oauth-credentials:
+  #   - dev/staging/prod → ExternalSecret (grafana-oauth-secret.yaml overlay)
+  #     syncing Key Vault `grafana-oauth-client-secret`.
+  #   - local → placeholder Secret (cluster/overlays/local/grafana-oauth-credentials.yaml).
+  envValueFrom:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+      secretKeyRef:
+        name: grafana-oauth-credentials
+        key: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
   # ServiceMonitor for grafana itself would be nice, but skip for now (cost).
 
 # Control-plane components that AKS manages for you — no need to scrape them.

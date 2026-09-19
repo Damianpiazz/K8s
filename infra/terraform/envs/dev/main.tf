@@ -116,6 +116,30 @@ module "streaming" {
 }
 
 # ---------------------------------------------------------------------------
+# Key Vault (Fase 5): seeds every secret consumed via external-secrets and
+# grants the kubelet identity 'Key Vault Secrets User' (data-plane RBAC) so
+# the ESO controller pod can read them (authType: ManagedIdentity via IMDS).
+# ---------------------------------------------------------------------------
+module "keyvault" {
+  source                        = "../../modules/keyvault"
+  environment                   = var.environment
+  location                      = var.location
+  suffix                        = var.suffix
+  resource_group_name           = module.networking.resource_group_name
+  tags                          = var.tags
+  kubelet_identity_object_id    = module.aks.kubelet_identity_id
+  event_hubs_connection_string  = module.streaming.connection_string
+  keycloak_admin_username       = var.keycloak_admin_username
+  argocd_oidc_client_secret     = var.argocd_oidc_client_secret
+  grafana_oauth_client_secret   = var.grafana_oauth_client_secret
+  # Fase 6: MISMO par de credenciales que el módulo databases — single source
+  # de verdad para servicios + Keycloak (KV los siembra como db-username/
+  # db-password y external-secrets los entrega al cluster).
+  postgres_administrator_login  = var.postgres_administrator_login
+  postgres_administrator_password = var.postgres_administrator_password
+}
+
+# ---------------------------------------------------------------------------
 # DNS (optional — no-op when dns_zone_name is empty)
 # ---------------------------------------------------------------------------
 module "dns" {

@@ -1,0 +1,39 @@
+---
+# Argo CD SSO — Keycloak OIDC (Phase 4: production-ready UI).
+#
+# Layered per environment: this ConfigMap merges over the empty `argocd-cm`
+# shipped by the bootstrap (cluster/base/argocd/install/install.yaml, applied
+# manually first). Argo CD reconciles it at runtime.
+#
+# Flow:
+#   - Browser → HTTPS → argocd.ecommerce.example.com → "Log in via Keycloak"
+#     → authorize redirect to https://auth.ecommerce.example.com/realms/ecommerce.
+#   - Server-side: the argocd-server pod exchanges the code at the same PUBLIC
+#     issuer URL. Azure uses real Let's Encrypt certs, so TLS verification
+#     passes. The local overlay points at auth.localhost and sets
+#     oidc.tls.insecure.skip.verify (self-signed) + a hostAliases patch on the
+#     argocd-server pod (cluster/overlays/local/argocd-extra/kustomization.yaml).
+#
+# AuthZ: the `groups` claim = realm group ecommerce-admins (Group Membership
+# mapper in the realm deployed by this overlay — auth-realm-configmap.yaml).
+# The argocd-rbac-cm.yaml overlay maps that group to role:admin.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  url: https://argocd.ecommerce.example.com
+  oidc.config: |
+    name: Keycloak
+    issuer: https://auth.ecommerce.example.com/realms/ecommerce
+    clientID: argocd
+    clientSecret: $oidc-argocd:clientSecret
+    requestedScopes:
+      - openid
+      - profile
+      - email
+      - groups

@@ -3,10 +3,11 @@ kind: Deployment
 metadata:
   name: auth
 spec:
-  # HA for Keycloak needs the distributed cache. This image starts with
-  # `start-dev` (no JGroups), so keep replicas at 2 max unless the container
-  # entrypoint is switched to `kc.sh start --cache-stack=kubernetes` (see
-  # Dockerfile prod section) — real prod then wants 3 replicas + Postgres.
+# Keycloak in prod posture (fix 30) is switched at the cluster-overlay level
+  # (cluster/overlays/prod/patches/auth-keycloak-start.yaml): kc.sh start +
+  # managed Postgres + proxy headers. HA with `start` still needs the embedded
+  # cache replaced (--cache-stack=kubernetes, JGroups) — pending; keep replicas
+  # at 2 unless that lands (then 3 + Postgres, already provisioned).
   replicas: 2
   template:
     spec:

@@ -1,9 +1,13 @@
 ---
-# Per-environment ConfigMap — PRODUCTION.
+# Per-environment ConfigMap — PROD.
 #
-# Secure defaults: INFO logging, no debug features, no mock data.
+# Production settings: INFO logging, no mock data, no Swagger.
 # Values reflect Azure-managed resources created by infra/terraform (Phase 2).
-# Replace placeholder FQDNs with actual terraform outputs.
+# Los nombres siguen la convención de los módulos (suffix del tfvars:
+# tppractico01) — ajustar <suffix> en cada despliegue real:
+#   psql-<env>-ecommerce-<suffix>.postgres.database.azure.com
+#   redis-<env>-ecommerce-<suffix>.redis.cache.windows.net
+#   eh-<env>-ecommerce-<suffix>.servicebus.windows.net:9093 (Kafka bootstrap)
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,17 +20,23 @@ data:
   ENVIRONMENT: prod
   LOG_LEVEL: INFO
 
-  # ── Data connections (Azure-managed, replace with terraform outputs) ────
-  DB_HOST: pg-prod-ecommerce.postgres.database.azure.com
+  # ── Data connections (Azure-managed) ──────────────────────────────────
+  DB_HOST: psql-prod-ecommerce-<suffix>.postgres.database.azure.com
   DB_PORT: "5432"
   DB_NAME: ecommerce
-  REDIS_HOST: redis-prod-ecommerce.redis.cache.windows.net
+  REDIS_HOST: redis-prod-ecommerce-<suffix>.redis.cache.windows.net
   REDIS_PORT: "6380"
 
-  # ── Messaging (Azure Event Hubs Kafka endpoint) ────────────────────────
-  KAFKA_BOOTSTRAP: ns-prod-ecommerce.servicebus.windows.net:9093
+  # ── Messaging (Azure Event Hubs Kafka endpoint, SASL_SSL) ────────────
+  # Las credenciales SASL viajan en el Secret event-hubs-credentials
+  # (ExternalSecret → Key Vault); ver patches/checkout-svc-sasl.yaml y
+  # patches/notification-svc-sasl.yaml.
+  KAFKA_BOOTSTRAP: eh-prod-ecommerce-<suffix>.servicebus.windows.net:9093
   KAFKA_SECURITY_PROTOCOL: SASL_SSL
+  # Switches de productor/consumidor Kafka (base los apaga para tests/CI).
+  CHECKOUT_EVENTS_KAFKA_ENABLED: "true"
+  NOTIFICATIONS_KAFKA_ENABLED: "true"
 
-  # ── Feature flags (prod: everything disabled) ──────────────────────────
+  # ── Feature flags (prod: sin extras de dev) ───────────────────────────
   ENABLE_SWAGGER: "false"
   ENABLE_MOCK_DATA: "false"

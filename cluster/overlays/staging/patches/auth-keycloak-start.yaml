@@ -1,0 +1,38 @@
+---
+# Fase 6 — Keycloak en modo producción (staging) → kc.sh start + PostgreSQL.
+# Igual que dev (auth-keycloak-start.yaml) con el zone y el servidor de
+# staging: host auth.staging.ecommerce.example.com, Flexible Server
+# psql-staging-ecommerce-<suffix> (misma convención que env-config).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  template:
+    spec:
+      containers:
+        - name: auth
+          command:
+            - /opt/keycloak/bin/kc.sh
+          args:
+            - start
+            - --import-realm
+            - --health-enabled=true
+            - --metrics-enabled=true
+            - --proxy-headers=xforwarded
+            - --db=postgres
+          env:
+            - name: KC_HOSTNAME
+              value: https://auth.staging.ecommerce.example.com
+            - name: KC_DB_URL
+              value: jdbc:postgresql://psql-staging-ecommerce-<suffix>.postgres.database.azure.com:5432/keycloak
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password

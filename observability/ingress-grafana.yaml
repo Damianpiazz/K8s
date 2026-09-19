@@ -1,0 +1,44 @@
+---
+# Grafana UI — Ingress (Phase 4: production-ready UI).
+#
+# Host grafana.<domain>, patched per overlay (local → grafana.localhost; Azure
+# → real DNS zone at bootstrap, Fase 5). TLS terminates here via ClusterIssuer
+# `letsencrypt-default` (local = self-signed cert, browsers will warn).
+#
+# Authentication: Keycloak generic OAuth. The GF_* variables live in the
+# `grafana-oauth-config` ConfigMap each overlay ships; the Grafana subchart
+# reads it through `envFromConfigMaps` (see
+# cluster/base/monitoring/kube-prometheus-stack/values.yaml). The ConfigMap is
+# per-environment because root URL and Keycloak hosts differ.
+#
+# Backend: the chart-created Service `kube-prometheus-stack-grafana` (port
+# name `service` — the subchart's service.portName default — plain HTTP).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: observability
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-default
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Grafana serves plain HTTP in the pod; TLS terminates at the ingress.
+    nginx.ingress.kubernetes.io/backend-protocol: HTTP
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.<domain>
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-grafana
+                port:
+                  name: service
+  tls:
+    - hosts:
+        - grafana.<domain>
+      secretName: grafana-tls

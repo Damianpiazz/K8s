@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# Floci-AZ — emulador local de Azure (Fase 1 del plan-implementacion).
+# Floci-AZ — emulador local de Azure (docs/PLAN.md, Fase 1).
 #
 # Levanta el emulador en localhost:4577 con TLS, storage hibrido persistente
 # y los sidecars de AKS/ACR/Postgres/Redis/Event Hubs listos para arrancar.
@@ -9,7 +9,7 @@
 #   (verifica TLS:  Invoke-RestMethod https://localhost:4577/_floci/health)
 #
 # Referencias:
-#   - docs/floci/plan-implementacion.md          -> Fase 1 (1.1 Compose local)
+#   - docs/PLAN.md                                 -> plan del proyecto (floci + Azure)
 #   - docs/floci/configuration/ports.md          -> puertos de los sidecars (NO publicarlos aca)
 #   - docs/floci/configuration/storage.md        -> modos de storage
 # ---------------------------------------------------------------------------

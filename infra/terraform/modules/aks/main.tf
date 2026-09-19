@@ -238,8 +238,13 @@ output "fqdn" {
 }
 
 output "kubelet_identity_id" {
-  description = "Object ID of the cluster kubelet system-assigned identity (used for ACR pull)."
+  description = "Object ID of the cluster kubelet system-assigned identity (used for ACR pull and as RBAC principal for Key Vault)."
   value       = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
+}
+
+output "kubelet_identity_client_id" {
+  description = "Client ID of the cluster kubelet system-assigned identity. external-secrets uses it as identityId (authType: ManagedIdentity via IMDS)."
+  value       = azurerm_kubernetes_cluster.this.kubelet_identity[0].client_id
 }
 
 output "kubeconfig" {

@@ -1,0 +1,35 @@
+---
+# Suplemento de Argo CD para LOCAL (Phase 4) — kustomization STANDALONE que se
+# aplica a mano DESPUÉS del bootstrap de Argo CD
+# (kubectl apply -k cluster/base/argocd/install), ver checklist en
+# docs/fixes/28-uis-ingress-tls-sso-gitops-floci.md.
+#
+# Por qué un kustomization aparte y no el overlay principal: los manifests de
+# install de Argo CD se aplican PRIMERO a mano (bootstrap — NO son parte de
+# cluster/base), así que kustomize no puede patchear argocd-server desde el
+# build del overlay main (el recurso no está en esa acumulación).
+#
+# Qué agrega:
+#   - hostAliases en argocd-server: el pod resuelve auth.localhost → 10.42.0.1
+#     (gateway de la pod CIDR de flannel en k3s, donde ingress-nginx escucha
+#     80/443). El flujo del navegador usa https://auth.localhost y el
+#     intercambio server-side usa el MISMO host a través del hostAlias;
+#     argocd-cm del overlay main setea oidc.tls.insecure.skip.verify=true para
+#     aceptar el cert self-signed.
+#     TODO(F4): verificar la IP real del nodo con `kubectl get nodes -o wide`
+#     (pod CIDR) y ajustar el hostAliases si 10.42.0.1 no aplica en tu floci.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../base/argocd/install
+patches:
+  - target:
+      kind: Deployment
+      name: argocd-server
+    patch: |-
+      - op: add
+        path: /spec/template/spec/hostAliases
+        value:
+          - ip: 10.42.0.1
+            hostnames:
+              - auth.localhost

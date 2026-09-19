@@ -14,7 +14,6 @@ spec:
     metadata:
       labels:
         app: payment-svc
-        env: production
         app.kubernetes.io/part-of: ecommerce-platform
     spec:
       serviceAccountName: payment-svc

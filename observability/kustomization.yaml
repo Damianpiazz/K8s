@@ -11,6 +11,8 @@ kind: Kustomization
 #   - dashboards/       → 3 Grafana dashboards (ConfigMaps via configMapGenerator,
 #                         sidecar label grafana_dashboard: "1")
 #   - alerts/           → 4 PrometheusRules (service down / 5xx / p99 / JVM heap)
+#   - ingress-grafana.yaml → Grafana UI Ingress (Phase 4): grafana.<domain>,
+#                         TLS via letsencrypt-default, Keycloak OAuth
 #   - otel/             → guidance-only (not applied): OTLP env reference
 #   - podmonitors/      → intentionally empty, see podmonitors/README.md
 #
@@ -22,3 +24,4 @@ resources:
   - servicemonitors
   - alerts
   - dashboards
+  - ingress-grafana.yaml

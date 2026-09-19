@@ -14,7 +14,6 @@ spec:
     metadata:
       labels:
         app: frontend
-        env: production
         app.kubernetes.io/part-of: ecommerce-platform
     spec:
       serviceAccountName: frontend

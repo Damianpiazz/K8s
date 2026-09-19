@@ -6,23 +6,22 @@ metadata:
     app: payment-svc
     app.kubernetes.io/part-of: ecommerce-platform
 data:
-  # ── Datasource defaults (demo: in-memory H2) ──────────────────────────
-  # The deployment consumes this via envFrom, so Spring Boot picks these
-  # up as relaxed-binder env vars (SPRING_DATASOURCE_URL etc.). Keys match
-  # config-service config/payment-svc.yml (demo block).
-  #
-  # ── Switch to Azure managed Postgres: ─────────────────────────────────
-  # DB_HOST / DB_PORT / DB_NAME come from the ecommerce-env-config ConfigMap
-  # (applied by cluster/overlays/{env}). Override here and swap the in-memory
-  # PaymentService for its JPA repository implementation:
-  #   SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-  #   SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-  #   SPRING_DATASOURCE_USERNAME: <db-user>
-  #   SPRING_DATASOURCE_PASSWORD: <from Azure Key Vault / external-secrets>
-  #   SPRING_JPA_HIBERNATE_DDL_AUTO: update
-  SPRING_DATASOURCE_URL: jdbc:h2:mem:paymentdb;DB_CLOSE_DELAY=-1
-  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
-  SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+  # ── Datasource ────────────────────────────────────────────────────────
+  # Fase 6: el datasource NO vive en el base (era jdbc:h2 en memoria). Cada
+  # overlay lo inyecta via env del deployment (nunca H2 en config de cluster):
+  #   - local:      patches/payment-svc-postgres-sidecar.yaml → Postgres
+  #                 sidecar en el pod (postgres:16-alpine, 127.0.0.1:5432)
+  #   - dev/staging/prod: patches/payment-svc-datasource.yaml → Azure
+  #                 Database for PostgreSQL gestionado (${DB_HOST}:${DB_PORT})
+  # Credenciales: Secret `db-credentials` (ExternalSecret → Key Vault en
+  # Azure; Secret placeholder en local). Fallback sin overlay: application.yml
+  # (H2 demo). Keys que cada overlay provee:
+  #   SPRING_DATASOURCE_URL / SPRING_DATASOURCE_DRIVER_CLASS_NAME /
+  #   SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD /
+  #   SPRING_JPA_HIBERNATE_DDL_AUTO
+  # NOTA: el store de PaymentService sigue siendo el HashMap en memoria (sin
+  # JPA aún, fix 30) — el datasource ya apunta a Postgres; la persistencia
+  # real llega con la implementación JPA (pendiente, no es config).
   SPRING_JPA_OPEN_IN_VIEW: "false"
 
   # Config server + Eureka endpoints (DNS names within the ecommerce ns).

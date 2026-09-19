@@ -34,4 +34,4 @@ spec:
               {{ $labels.namespace }} (up == 0 for more than 1 minute).
               Check the Deployment, Pod status and the
               /actuator/prometheus endpoint.
-            runbook: "https://example.com/runbooks/service-down" # TODO: replace with your runbook URL
+            runbook: "https://github.com/Damianpiazz/K8s/blob/main/docs/runbooks/troubleshooting.md" # docs/runbooks/troubleshooting.md

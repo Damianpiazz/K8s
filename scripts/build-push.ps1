@@ -14,7 +14,11 @@
 #   -SkipBuild   solo push de imagenes ya construidas
 #
 # Convencion (work-unit-commits / cd.yml): NUNCA usar :latest para el deploy;
-# el overlay local ya rewrites a host.docker.internal:5000/<repo>/<svc>.
+# el overlay local rewrites a host.docker.internal:5000/<repo>/<svc>.
+# Fix 27 (estrategia unica de tags): cada ambiente tiene UN solo mecanismo que
+# fija tags. LOCAL lo mantiene este script (al final actualiza newTag del
+# overlay local al SHA corto que acaba de pushear). AZURE lo mantiene el CD
+# (newTag = SHA largo del commit en dev/staging/prod). No editar newTag a mano.
 # ---------------------------------------------------------------------------
 param(
     [string]$Repository = "localhost:5000/localecommercefloci01",
@@ -86,6 +90,25 @@ foreach ($svc in $services) {
     Write-Host "==> push   $image" -ForegroundColor Cyan
     docker push $image
     if ($LASTEXITCODE -ne 0) { throw "docker push fallo para $svc" }
+}
+
+# Fix 27: mantener el contrato de tags del overlay LOCAL — newTag siempre
+# refleja lo que este script acaba de pushear (nunca :latest). Solo en modo
+# local; Azure lo gestiona el CD con SHA largo.
+if (-not $Azure) {
+    $kustPath = Join-Path $PSScriptRoot "..\cluster\overlays\local\kustomization.yaml"
+    $kust = [System.IO.File]::ReadAllText($kustPath, [System.Text.Encoding]::UTF8)
+    $newTagRepl = '${1}' + $Tag
+    foreach ($svc in $services) {
+        $pattern = "(?s)(- name: acr\.azurecr\.io/$svc\r?\n.*?newTag: )\S+"
+        $updated = [regex]::Replace($kust, $pattern, $newTagRepl)
+        if ($updated -eq $kust) {
+            Write-Warning "newTag de $svc no encontrado en $kustPath (patron inesperado)"
+        }
+        $kust = $updated
+    }
+    [System.IO.File]::WriteAllText($kustPath, $kust, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "==> Overlay local actualizado: newTag=$Tag para $($services.Count) servicios" -ForegroundColor Cyan
 }
 
 Write-Host "==> OK: $($services.Count) imagenes en $Repository" -ForegroundColor Green

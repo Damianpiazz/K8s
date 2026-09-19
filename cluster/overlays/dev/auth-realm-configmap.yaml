@@ -1,0 +1,145 @@
+---
+# Keycloak realm DEV — reemplaza el realm embebido en la imagen.
+#
+# La imagen embebe services/auth/src/realm-export.json con redirectUris que
+# usan el placeholder <domain> (URI inválida → Keycloak aborta la importación).
+# Este ConfigMap se monta ENCIMA del path de import (patches/
+# deployment-auth-realm-patch.yaml) con hosts reales del entorno:
+#   api.<zone> / www.<zone> / argocd.<zone> / grafana.<zone>
+#
+# Zona dev: dev.ecommerce.example.com (terraform.tfvars dns_zone_name).
+#
+# Contrato realm/secret (Fase 5): los client secrets de `argocd` y `grafana`
+# quedan con el placeholder por defecto, igual que el Key Vault (variables
+# argocd_oidc_client_secret / grafana_oauth_client_secret en terraform) y que
+# los Secrets materializados por external-secrets. La cadena funciona tal cual;
+# rotar = cambiar el placeholder AQUÍ + en las variables de terraform.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-realm-dev
+  namespace: ecommerce
+data:
+  realm-export.json: |
+    {
+      "realm": "ecommerce",
+      "enabled": true,
+      "displayName": "E-commerce Platform",
+      "sslRequired": "external",
+      "registrationAllowed": false,
+      "loginTheme": "keycloak",
+      "accountTheme": "keycloak",
+      "adminTheme": "keycloak",
+      "defaultSignatureAlgorithm": "RS256",
+      "roles": {
+        "realm": [
+          { "name": "admin", "description": "Platform administrators" },
+          { "name": "user",  "description": "Regular e-commerce users" }
+        ]
+      },
+      "users": [],
+      "groups": [
+        {
+          "name": "ecommerce-admins",
+          "description": "Platform administrators — mapped to role:admin in Argo CD and Admin in Grafana"
+        }
+      ],
+      "clients": [
+        {
+          "clientId": "ecommerce-web",
+          "name": "E-commerce Web Application (SPA)",
+          "description": "Public client — browser frontend. No secret, PKCE enabled.",
+          "enabled": true,
+          "publicClient": true,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": false,
+          "redirectUris": [ "http://localhost:*", "http://www.dev.ecommerce.example.com/*", "https://api.dev.ecommerce.example.com/callback" ],
+          "webOrigins": [ "http://localhost:*", "http://www.dev.ecommerce.example.com:*", "https://api.dev.ecommerce.example.com" ],
+          "attributes": {
+            "pkce.code.challenge.method": "S256"
+          }
+        },
+        {
+          "clientId": "ecommerce-api",
+          "name": "E-commerce API (gateway / machine-to-machine)",
+          "description": "Confidential client. JWTs validated by the api-gateway via JWKS. REPLACE the placeholder secret.",
+          "enabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": false,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+          "attributes": {
+            "use.jwks.url": "true"
+          }
+        },
+        {
+          "clientId": "argocd",
+          "name": "Argo CD (GitOps UI)",
+          "description": "Confidential client — Argo CD OIDC login. Secret must match the oidc-argocd Kubernetes Secret (returned via $oidc-argocd:clientSecret) and Key Vault argocd-oidc-client-secret.",
+          "enabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+          "redirectUris": [ "https://argocd.dev.ecommerce.example.com/auth/callback" ],
+          "webOrigins": [ "https://argocd.dev.ecommerce.example.com" ],
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "claim.name": "groups"
+              }
+            }
+          ]
+        },
+        {
+          "clientId": "grafana",
+          "name": "Grafana (observability UI)",
+          "description": "Confidential client — Grafana generic OAuth login. Secret must match GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET in the Secret grafana-oauth-credentials and Key Vault grafana-oauth-client-secret.",
+          "enabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "REPLACE_WITH_A_SECURE_CLIENT_SECRET",
+          "redirectUris": [ "https://grafana.dev.ecommerce.example.com/login/generic_oauth" ],
+          "webOrigins": [ "https://grafana.dev.ecommerce.example.com" ],
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "userinfo.token.claim": "true",
+                "claim.name": "groups"
+              }
+            }
+          ]
+        }
+      ]
+    }

@@ -829,7 +829,7 @@ MIT. Úsalo como quieras.
 | [services/index.md](services/index.md) | Referencia de servicios |
 | [configuration/docker-compose.md](configuration/docker-compose.md) | Configuración |
 | [terraform.md](terraform.md) | Terraform / OpenTofu con el proveedor azurerm |
-| [plan-implementacion.md](plan-implementacion.md) | Plan de emulación local de la plataforma e-commerce |
+| [PLAN.md](../PLAN.md) | Plan del proyecto: fases, decisiones y estado |
 
 ## Fuentes
 

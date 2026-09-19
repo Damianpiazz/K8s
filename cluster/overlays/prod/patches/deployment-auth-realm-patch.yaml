@@ -1,0 +1,26 @@
+---
+# Patch: monta el realm PROD sobre el embebido en la imagen (Fase 5).
+#
+# El realm del base (services/auth/src/realm-export.json) usa redirectUris con
+# el placeholder <domain> — Keycloak aborta la importación. Este overlay monta
+# auth-realm-configmap.yaml (auth-realm-prod) en el path de import.
+#
+# NOTA: a diferencia del patch local, NO se reescriben command/args — el
+# Deployment base ya incluye --health-enabled=true y --metrics-enabled=true.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  template:
+    spec:
+      volumes:
+        - name: auth-realm
+          configMap:
+            name: auth-realm-prod
+      containers:
+        - name: auth
+          volumeMounts:
+            - name: auth-realm
+              mountPath: /opt/keycloak/data/import/realm-export.json
+              subPath: realm-export.json

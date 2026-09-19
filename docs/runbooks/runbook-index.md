@@ -41,3 +41,6 @@ tabla de placeholders de `scripts/README.md` + `../adr/0007`.
   el repo en su lugar.
 - El `disallow-latest-tag` de Kyverno y el PSA `restricted` son features, no
   incidentes — los runbooks dicen dónde muerden y cómo trabajar con ellos.
+- Las alertas de Prometheus (`observability/alerts/`) apuntan su anotación
+  `runbook` a estos runbooks (URL al repo en `main`) — si movés un runbook,
+  actualizá también las alertas.

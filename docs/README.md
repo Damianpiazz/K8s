@@ -19,7 +19,7 @@ la tarea que necesites resolver.
 | Probar comandos kubectl | [`comandos/`](comandos/README.md) — 9 fichas prácticas |
 | Leer los apuntes de casos de uso del curso | [`casos-de-uso/`](casos-de-uso/README.md) |
 | Ver los tutoriales de despliegue (GitOps, Helm vs Kustomize) | [`despliegue/`](despliegue/README.md) |
-| Releer el plan original del proyecto | [`plan-ecommerce-k8s.md`](plan-ecommerce-k8s.md) |
+| Releer el plan del proyecto | [`PLAN.md`](PLAN.md) |
 | Ver las imágenes de diagramas | [`img/`](img/) |
 
 ## Los tres pilares nuevos (Fase 9)

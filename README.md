@@ -17,7 +17,7 @@ Browser → Load Balancer → Ingress → API Gateway → Microservicios → Dat
                                   Argo CD ← Git (este repo)
 ```
 
-Arquitectura completa con diagrama Mermaid: [docs/plan-ecommerce-k8s.md](docs/plan-ecommerce-k8s.md)
+Arquitectura completa con diagrama Mermaid: [docs/PLAN.md](docs/PLAN.md)
 
 ---
 
@@ -138,7 +138,7 @@ Configurar en **Settings → Secrets and variables → Actions** del repositorio
 | [Casos de uso](docs/casos-de-uso/README.md) | Microservicios, IA/ML, bases de datos, web/CMS, CI/CD, observabilidad, batch |
 | [Despliegue](docs/despliegue/README.md) | Setup de clúster, herramientas, Helm/Kustomize, GitOps |
 | [Comandos](docs/comandos/README.md) | Referencia de comandos de `kubectl` |
-| [Plan del proyecto](docs/plan-ecommerce-k8s.md) | Plan completo: estructura, arquitectura, fases y decisiones |
+| [Plan del proyecto](docs/PLAN.md) | Plan de refinamiento: fases, decisiones y estado |
 
 ---
 

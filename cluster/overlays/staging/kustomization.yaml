@@ -24,6 +24,14 @@ resources:
   - issuer-default.yaml
   # ConfigMap consumed by services via envFrom (Phase 5+)
   - env-config.yaml
+  # ── UIs SSO (Phase 4): Argo CD OIDC + Grafana OAuth via Keycloak ──
+  - argocd-cm.yaml
+  - argocd-rbac-cm.yaml
+  - oidc-argocd-secret.yaml
+  - grafana-oauth-config.yaml
+  # ── Fase 5: ExternalSecrets SSO (→ Key Vault) + realm del entorno ──
+  - grafana-oauth-secret.yaml
+  - auth-realm-configmap.yaml
   # ── Services (Phase 5 — core; staging uses each service's BASE manifests) ──
   - ../../../services/config-service/k8s/base
   - ../../../services/discovery-service/k8s/base
@@ -57,6 +65,137 @@ patches:
       name: azure-keyvault
     path: patches/secret-store-patch.yaml
 
+  # ── Fase 5: realm STAGING montado sobre el embebido en la imagen ─────
+  - target:
+      kind: Deployment
+      name: auth
+    path: patches/deployment-auth-realm-patch.yaml
+
+  # ── Fase 5: SASL Event Hubs (productor checkout + consumer notification) ──
+  - target:
+      kind: Deployment
+      name: checkout-svc
+    path: patches/checkout-svc-sasl.yaml
+  - target:
+      kind: Deployment
+      name: notification-svc
+    path: patches/notification-svc-sasl.yaml
+
+  # ── Fase 6: datasource servicios → PostgreSQL gestionado de Azure ─────
+  # El base ya no lleva jdbc:h2; cada overlay inyecta la URL del Flexible
+  # Server (${DB_HOST}:${DB_PORT} de ecommerce-env-config) + Secret
+  # db-credentials (ExternalSecret → KV, fix 30).
+  - target:
+      kind: Deployment
+      name: catalog-svc
+    path: patches/catalog-svc-datasource.yaml
+  - target:
+      kind: Deployment
+      name: order-svc
+    path: patches/order-svc-datasource.yaml
+  - target:
+      kind: Deployment
+      name: inventory-svc
+    path: patches/inventory-svc-datasource.yaml
+  - target:
+      kind: Deployment
+      name: payment-svc
+    path: patches/payment-svc-datasource.yaml
+
+  # ── Fase 6: Keycloak en modo producción (kc.sh start + Postgres) ──────
+  - target:
+      kind: Deployment
+      name: auth
+    path: patches/auth-keycloak-start.yaml
+
+  # ── Fase 5: hosts reales del zone staging (sin <domain>) ─────────────
+  # Los ingresses del base traen <domain>; aquí se fija el host + TLS del
+  # zone staging (staging.ecommerce.example.com), igual que local con *.localhost.
+  - target:
+      kind: Ingress
+      name: argocd
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: argocd.staging.ecommerce.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: argocd.staging.ecommerce.example.com
+  - target:
+      kind: Ingress
+      name: grafana
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: grafana.staging.ecommerce.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: grafana.staging.ecommerce.example.com
+  - target:
+      kind: Ingress
+      name: auth
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: auth.staging.ecommerce.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: auth.staging.ecommerce.example.com
+  - target:
+      kind: Ingress
+      name: api-gateway
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.staging.ecommerce.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: api.staging.ecommerce.example.com
+  - target:
+      kind: Ingress
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: www.staging.ecommerce.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: www.staging.ecommerce.example.com
+
+  # ── Fase 5: brokers del ScaledObject order-worker (ejemplo KEDA) ──────
+  # El ejemplo del base trae <event-hubs-ns> literal; se fija el endpoint
+  # Kafka real del zone staging (el ScaledObject sigue siendo un ejemplo:
+  # apunta a un deployment order-worker inexistente — ver fix 29).
+  - target:
+      kind: ScaledObject
+      group: keda.sh
+      version: v1alpha1
+      name: order-worker
+    patch: |-
+      - op: replace
+        path: /spec/triggers/0/metadata/brokers
+        value: eh-staging-ecommerce-<suffix>.servicebus.windows.net:9093
+
+  # Label `env` per environment (fix 27): the base no longer hardcodes
+  # `env: production`. Each overlay signs the REAL environment value on the
+  # pod template labels + the ecommerce Namespace. The ServiceMonitors
+  # relabel it (__meta_kubernetes_pod_label_env) so the dashboards filter by
+  # environment without coupling to the namespace name.
+  - target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=ecommerce-platform
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/env
+        value: staging
+  - target:
+      kind: Namespace
+      name: ecommerce
+    patch: |-
+      - op: add
+        path: /metadata/labels/env
+        value: staging
+
 # Pod Security (PSA) labels — the security/pod-security COMPONENT patches the
 # Namespaces (owned by ../../base) with the PSA labels. Component patches apply
 # to THIS root build's accumulation, so the labels merge and land in the same
@@ -68,59 +207,62 @@ components:
 # Replace `acr` with your real ACR login server ONCE; CD rewrites newTag to the
 # commit SHA on push to main (contract with .github/workflows/cd.yml). Entries
 # for services added in later phases are pre-listed so CD keeps working.
+# Fix 27: `latest` is never referenced in this overlay — newTag is pinned to
+# the last main commit SHA, so Kyverno `disallow-latest-tag` never blocks a
+# direct apply, and a render is always fully specified.
 images:
   - name: acr.azurecr.io/config-service
     newName: acr.azurecr.io/config-service
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/discovery-service
     newName: acr.azurecr.io/discovery-service
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/api-gateway
     newName: acr.azurecr.io/api-gateway
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/auth
     newName: acr.azurecr.io/auth
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/catalog-svc
     newName: acr.azurecr.io/catalog-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/cart-svc
     newName: acr.azurecr.io/cart-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   # Phase 6/7 services (created when those phases land):
   - name: acr.azurecr.io/checkout-svc
     newName: acr.azurecr.io/checkout-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/order-svc
     newName: acr.azurecr.io/order-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/payment-svc
     newName: acr.azurecr.io/payment-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/notification-svc
     newName: acr.azurecr.io/notification-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/search-svc
     newName: acr.azurecr.io/search-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/recommendation-svc
     newName: acr.azurecr.io/recommendation-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/inventory-svc
     newName: acr.azurecr.io/inventory-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/shipping-svc
     newName: acr.azurecr.io/shipping-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/returns-svc
     newName: acr.azurecr.io/returns-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/analytics-svc
     newName: acr.azurecr.io/analytics-svc
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/bff-web
     newName: acr.azurecr.io/bff-web
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516
   - name: acr.azurecr.io/frontend
     newName: acr.azurecr.io/frontend
-    newTag: latest
+    newTag: 42c7c2bf266c81f3a5dfdda08319eb336e57a516

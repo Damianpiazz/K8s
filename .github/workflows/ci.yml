@@ -146,6 +146,12 @@ jobs:
             fi
           done
 
+      - name: Test manifests (SM wiring checks)
+        if: hashFiles('cluster/**') != ''
+        run: |
+          python -m pip install --quiet pyyaml
+          python tests/manifests/test-kustomize-build.py
+
   # ── Secret scanning (Gitleaks) ──
   secret-scan:
     name: Secret scanning

@@ -1,0 +1,35 @@
+---
+# ecommerce-local — despliega el overlay LOCAL vía Argo CD (Phase 4: floci
+# GitOps total, mismo mecanismo que Azure).
+#
+# Por qué vive en cluster/overlays/local y NO en cluster/base/argocd/
+# applications/: el app-of-apps de Azure (ecommerce-apps) apunta a ese
+# directorio; si esta Application estuviera ahí, Azure también la adoptaría.
+# En local el app-of-apps y las Applications ecommerce-{dev,staging,prod}
+# siguen excluidas (apuntan a overlays de Azure).
+#
+# Nota de sync: Argo CD sincroniza desde el repo (origin/main), no desde el
+# working tree — después del `kubectl apply -k cluster/overlays/local` de
+# bootstrap hay que push antes de esperar el sync automatizado.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-local
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Damianpiazz/K8s.git
+    targetRevision: main
+    path: cluster/overlays/local
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

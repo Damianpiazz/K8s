@@ -48,7 +48,7 @@ postgres_allowed_ip_ranges          = ["<office-or-ci-cidr>/32"]
 postgres_administrator_login        = "pgadmin" # REPLACE
 postgres_administrator_password     = "<STRONG-PASSWORD>" # REPLACE, no '@' special chars
 postgres_backup_retention_days      = 14
-postgres_databases                  = ["orders", "payments", "catalog"]
+postgres_databases                  = ["orders", "payments", "catalog", "inventory", "keycloak"] # Fase 6: inventory (datasource inventory-svc) + keycloak (fix 30, auth en modo start)
 
 # --- Redis (Standard, capacity 1) ---
 redis_sku      = "Standard"
@@ -58,6 +58,14 @@ redis_family   = "C"
 # --- Streaming (Event Hubs, Kafka-compatible) ---
 eventhub_sku       = "Standard"
 eventhub_capacity  = 2
+
+# --- Key Vault (Fase 5) ---
+# Los client secrets de SSO SIEMPRE deben coincidir con el client.secret del
+# realm Keycloak desplegado por el overlay (auth-realm-configmap.yaml). El
+# default (placeholder) ya coincide con el realm; rotar = cambiar AMBAS
+# variables + el realm (contrato realm/secret, ver docs/fixes/29).
+argocd_oidc_client_secret   = "REPLACE_WITH_A_SECURE_CLIENT_SECRET"
+grafana_oauth_client_secret = "REPLACE_WITH_A_SECURE_CLIENT_SECRET"
 
 # --- DNS (optional; leave "" to create nothing) ---
 dns_zone_name = "staging.ecommerce.example.com"

@@ -33,4 +33,4 @@ spec:
               maximum for more than 10 minutes (current: {{ $value | humanizePercentage }}).
               Dump the heap or raise the memory limit after verifying the
               application's baseline footprint.
-            runbook: "https://example.com/runbooks/jvm-memory-pressure" # TODO: replace with your runbook URL
+            runbook: "https://github.com/Damianpiazz/K8s/blob/main/docs/runbooks/troubleshooting.md" # docs/runbooks/troubleshooting.md

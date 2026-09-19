@@ -1,0 +1,36 @@
+---
+# Grafana generic OAuth (Keycloak) — Phase 4. Variante LOCAL.
+# Leído por el subchart de Grafana vía `grafana.envFromConfigMaps` (values.yaml)
+# e inyectado como env vars en el pod.
+#
+# URL strategy:
+#   - AUTH_URL (redirect del navegador) → https://auth.localhost (público;
+#     el navegador resuelve contra el nodo k3s — ver checklist del fix 28).
+#   - TOKEN_URL / API_URL (server-to-server) → in-cluster
+#     http://auth.ecommerce.svc.cluster.local:8080 — sin TLS, sin DNS, sin
+#     hostAliases en el pod de Grafana.
+#
+# Roles: ecommerce-admins → Grafana Admin; el resto → Viewer (default de
+# Grafana cuando la expresión no devuelve role).
+#
+# Fase 5: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET ya NO vive en este ConfigMap —
+# el pod lo inyecta desde el Secret grafana-oauth-credentials (placeholder en
+# local, ExternalSecret → Key Vault en Azure) vía grafana.envValueFrom.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-oauth-config
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: ecommerce-platform
+data:
+  GF_SERVER_ROOT_URL: https://grafana.localhost
+  GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+  GF_AUTH_GENERIC_OAUTH_NAME: Keycloak
+  GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "false"
+  GF_AUTH_GENERIC_OAUTH_CLIENT_ID: grafana
+  GF_AUTH_GENERIC_OAUTH_SCOPES: openid profile email groups
+  GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://auth.localhost/realms/ecommerce/protocol/openid-connect/auth
+  GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://auth.ecommerce.svc.cluster.local:8080/realms/ecommerce/protocol/openid-connect/token
+  GF_AUTH_GENERIC_OAUTH_API_URL: http://auth.ecommerce.svc.cluster.local:8080/realms/ecommerce/protocol/openid-connect/userinfo
+  GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: contains(groups[*], 'ecommerce-admins') && 'Admin'

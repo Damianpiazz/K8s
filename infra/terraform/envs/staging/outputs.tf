@@ -88,6 +88,26 @@ output "eventhub_connection_string" {
   sensitive   = true
 }
 
+output "keyvault_name" {
+  description = "Key Vault name."
+  value       = module.keyvault.keyvault_name
+}
+
+output "keyvault_vault_url" {
+  description = "Key Vault URI — used by the ClusterSecretStore overlay patch (vaultUrl)."
+  value       = module.keyvault.keyvault_vault_url
+}
+
+output "keyvault_tenant_id" {
+  description = "Key Vault tenant ID — used by the ClusterSecretStore overlay patch (tenantId)."
+  value       = module.keyvault.keyvault_tenant_id
+}
+
+output "eso_identity_client_id" {
+  description = "Client ID of the identity external-secrets uses (AKS kubelet system-assigned) — used by the ClusterSecretStore overlay patch (identityId)."
+  value       = module.aks.kubelet_identity_client_id
+}
+
 output "dns_zone_name" {
   description = "DNS zone name (empty when disabled)."
   value       = module.dns.zone_name

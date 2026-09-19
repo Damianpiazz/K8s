@@ -1,0 +1,44 @@
+---
+# Argo CD SSO — Keycloak OIDC (Phase 4). Variante LOCAL.
+#
+# Igual mecanismo que dev/staging/prod, con hosts *.localhost (floci no tiene
+# DNS). Detalles específicos de local:
+#
+#   - issuer https://auth.localhost/realms/ecommerce: el navegador resuelve
+#     auth.localhost contra 10.42.0.1 (IP del nodo k3s / gateway de la pod
+#     CIDR flannel) donde escucha ingress-nginx; el POD argocd-server resuelve
+#     el MISMO host gracias al hostAliases del patch standalone
+#     cluster/overlays/local/argocd-extra/kustomization.yaml (el Deployment de
+#     argocd-server no está en el build del overlay: se aplica con el bootstrap).
+#   - oidc.tls.insecure.skip.verify: "true": el issuer local usa un cert
+#     self-signed (ClusterIssuer letsencrypt-default → selfSigned); Argo CD
+#     saltea la verificación de TLS para el intercambio server-side. En Azure
+#     esta clave NO existe (certificados Let's Encrypt reales).
+#   - clientSecret $oidc-argocd:clientSecret → Secret oidc-argocd (mismo
+#     namespace), valor = placeholder que debe coincidir con el client `argocd`
+#     del realm local (auth-realm-configmap.yaml).
+#
+# AuthZ: claim `groups` = grupo del realm ecommerce-admins (Group Membership
+# mapper flat path); argocd-rbac-cm.yaml mapea ese grupo a role:admin.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  url: https://argocd.localhost
+  # Solo local: issuer con cert self-signed (ver header comentado arriba).
+  oidc.tls.insecure.skip.verify: "true"
+  oidc.config: |
+    name: Keycloak
+    issuer: https://auth.localhost/realms/ecommerce
+    clientID: argocd
+    clientSecret: $oidc-argocd:clientSecret
+    requestedScopes:
+      - openid
+      - profile
+      - email
+      - groups

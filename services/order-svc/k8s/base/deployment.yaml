@@ -14,7 +14,6 @@ spec:
     metadata:
       labels:
         app: order-svc
-        env: production
         app.kubernetes.io/part-of: ecommerce-platform
     spec:
       serviceAccountName: order-svc

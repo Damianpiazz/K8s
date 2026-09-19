@@ -14,7 +14,6 @@ spec:
     metadata:
       labels:
         app: notification-svc
-        env: production
         app.kubernetes.io/part-of: ecommerce-platform
     spec:
       serviceAccountName: notification-svc
